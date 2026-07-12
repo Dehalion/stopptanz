@@ -13,4 +13,5 @@ captures/
 
 # Other
 .tokensave
+.envrc
 
