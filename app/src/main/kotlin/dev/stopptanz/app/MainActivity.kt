@@ -1,52 +1,89 @@
 package dev.stopptanz.app
 
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import dev.stopptanz.app.playlist.PlaylistRepository
+import dev.stopptanz.app.playlist.PlaylistSelectionState
 import dev.stopptanz.app.settings.SettingsRepository
 import kotlinx.coroutines.launch
-
-private const val KEY_LAUNCH_COUNT = "debug_launch_count"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val settings = SettingsRepository(applicationContext)
+        val playlistRepository = PlaylistRepository(applicationContext, settings)
         setContent {
-            StopptanzApp(settings)
+            StopptanzApp(playlistRepository)
         }
     }
 }
 
 @Composable
-fun StopptanzApp(settings: SettingsRepository) {
+fun StopptanzApp(playlistRepository: PlaylistRepository) {
     val scope = rememberCoroutineScope()
-    val count by settings.intFlow(KEY_LAUNCH_COUNT, 0).collectAsState(initial = 0)
+    var state by remember { mutableStateOf<PlaylistSelectionState>(PlaylistSelectionState.Loading) }
+
+    val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri: Uri? ->
+        if (uri == null) {
+            state = PlaylistSelectionState.PickerCancelled
+        } else {
+            scope.launch { state = playlistRepository.selectFolder(uri) }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        state = playlistRepository.loadPersistedSelection()
+    }
 
     MaterialTheme {
         Surface(modifier = Modifier.fillMaxSize()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("Stopptanz")
-                    Text("Persisted count: $count")
-                    Button(onClick = { scope.launch { settings.setInt(KEY_LAUNCH_COUNT, count + 1) } }) {
-                        Text("Increment")
+                    Text(
+                        text = state.statusText(),
+                        modifier = Modifier.padding(vertical = 8.dp),
+                    )
+                    Button(onClick = { pickFolder.launch(null) }) {
+                        Text("Pick music folder")
                     }
                 }
             }
         }
     }
+}
+
+private fun PlaylistSelectionState.statusText(): String = when (this) {
+    PlaylistSelectionState.Loading -> "Loading…"
+    PlaylistSelectionState.NotSelected -> "No folder selected yet."
+    PlaylistSelectionState.PickerCancelled -> "Folder access is needed to pick music. Please try again."
+    is PlaylistSelectionState.PermissionUnavailable -> if (folderName != null) {
+        "Folder \"$folderName\" is no longer accessible. Please pick it again."
+    } else {
+        "Couldn't get access to that folder. Please try again."
+    }
+    is PlaylistSelectionState.Empty -> "Folder \"$folderName\" has no audio files."
+    is PlaylistSelectionState.Selected -> "Folder: $folderName (${playlist.tracks.size} tracks)"
 }
