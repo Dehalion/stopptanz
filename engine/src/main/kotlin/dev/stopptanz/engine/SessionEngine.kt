@@ -3,11 +3,16 @@ package dev.stopptanz.engine
 class SessionEngine(
     val playlist: Playlist,
     val mode: Mode,
-    private val stopInterval: StopInterval,
-    val pauseDurationMillis: Long,
+    stopInterval: StopInterval,
+    pauseDurationMillis: Long,
     private val randomSource: RandomSource = DefaultRandomSource(),
 ) {
     var state: SessionState = SessionState.Playing
+        private set
+
+    private var stopInterval: StopInterval = stopInterval
+
+    var pauseDurationMillis: Long = pauseDurationMillis
         private set
 
     /** Playlist tracks in playback order: shuffled once per Session if [Playlist.shuffle] is set. */
@@ -17,6 +22,16 @@ class SessionEngine(
 
     fun nextStopDelayMillis(): Long =
         randomSource.nextLong(stopInterval.minMillis, stopInterval.maxMillis)
+
+    /** Applies prospectively: a countdown already in flight captured its value on return and is unaffected. */
+    fun setStopInterval(stopInterval: StopInterval) {
+        this.stopInterval = stopInterval
+    }
+
+    /** Applies prospectively: a countdown already in flight captured its value on return and is unaffected. */
+    fun setPauseDurationMillis(pauseDurationMillis: Long) {
+        this.pauseDurationMillis = pauseDurationMillis
+    }
 
     /** Called by the playback adapter when the Playlist reaches its end. */
     fun onPlaylistEnded() {

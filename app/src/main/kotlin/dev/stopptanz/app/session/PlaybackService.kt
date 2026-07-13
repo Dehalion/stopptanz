@@ -197,6 +197,16 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
+    /** Live-adjusts the Stop Interval for the in-progress Session; applies from the next Stop cycle onward. */
+    fun setStopInterval(minMillis: Int, maxMillis: Int) {
+        adapter?.setStopInterval(StopInterval(minMillis.toLong(), maxMillis.toLong()))
+    }
+
+    /** Live-adjusts the pause duration for the in-progress Session; applies from the next pause cycle onward. */
+    fun setPauseDurationMillis(millis: Int) {
+        adapter?.setPauseDurationMillis(millis.toLong())
+    }
+
     /** Session acknowledged Finished (host tapped Done) — tear down and give up the foreground notification. */
     fun acknowledgeFinished() {
         adapter?.cancelJobs()

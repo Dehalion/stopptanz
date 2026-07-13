@@ -7,6 +7,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import dev.stopptanz.engine.Mode
 import dev.stopptanz.engine.SessionEngine
 import dev.stopptanz.engine.SessionState
+import dev.stopptanz.engine.StopInterval
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -72,6 +73,14 @@ class SessionPlaybackAdapter(
         player.play()
         onStateChanged(engine.state)
         scheduleAutoStop()
+    }
+
+    fun setStopInterval(stopInterval: StopInterval) {
+        engine.setStopInterval(stopInterval)
+    }
+
+    fun setPauseDurationMillis(pauseDurationMillis: Long) {
+        engine.setPauseDurationMillis(pauseDurationMillis)
     }
 
     private fun scheduleAutoStop() {

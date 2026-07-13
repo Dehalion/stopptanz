@@ -158,38 +158,16 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings,
         Button(onClick = { scope.launch { sessionSettings.setMode(Mode.FREEZE_DANCE) } }) { Text(stringResource(R.string.mode_freeze_dance)) }
         Button(onClick = { scope.launch { sessionSettings.setMode(Mode.MUSICAL_CHAIRS) } }) { Text(stringResource(R.string.mode_musical_chairs)) }
 
-        Text(stringResource(R.string.label_pause, pauseDurationMillis / 1000), Modifier.padding(vertical = 4.dp))
-        Button(onClick = {
-            scope.launch { sessionSettings.setPauseDurationMillis((pauseDurationMillis - 1_000).coerceIn(1_000, 30_000)) }
-        }) { Text(stringResource(R.string.button_decrement_1s)) }
-        Button(onClick = {
-            scope.launch { sessionSettings.setPauseDurationMillis((pauseDurationMillis + 1_000).coerceIn(1_000, 30_000)) }
-        }) { Text(stringResource(R.string.button_increment_1s)) }
+        PauseDurationControls(pauseDurationMillis) { millis ->
+            scope.launch { sessionSettings.setPauseDurationMillis(millis) }
+        }
 
-        Text(
-            stringResource(R.string.label_stop_interval, stopIntervalMinMillis / 1000, stopIntervalMaxMillis / 1000),
-            Modifier.padding(vertical = 4.dp),
+        StopIntervalControls(
+            stopIntervalMinMillis = stopIntervalMinMillis,
+            stopIntervalMaxMillis = stopIntervalMaxMillis,
+            onMinChange = { millis -> scope.launch { sessionSettings.setStopIntervalMinMillis(millis) } },
+            onMaxChange = { millis -> scope.launch { sessionSettings.setStopIntervalMaxMillis(millis) } },
         )
-        Button(onClick = {
-            scope.launch {
-                sessionSettings.setStopIntervalMinMillis((stopIntervalMinMillis - 1_000).coerceIn(1_000, stopIntervalMaxMillis - 1_000))
-            }
-        }) { Text(stringResource(R.string.button_min_decrement)) }
-        Button(onClick = {
-            scope.launch {
-                sessionSettings.setStopIntervalMinMillis((stopIntervalMinMillis + 1_000).coerceIn(1_000, stopIntervalMaxMillis - 1_000))
-            }
-        }) { Text(stringResource(R.string.button_min_increment)) }
-        Button(onClick = {
-            scope.launch {
-                sessionSettings.setStopIntervalMaxMillis((stopIntervalMaxMillis - 1_000).coerceIn(stopIntervalMinMillis + 1_000, 60_000))
-            }
-        }) { Text(stringResource(R.string.button_max_decrement)) }
-        Button(onClick = {
-            scope.launch {
-                sessionSettings.setStopIntervalMaxMillis((stopIntervalMaxMillis + 1_000).coerceIn(stopIntervalMinMillis + 1_000, 60_000))
-            }
-        }) { Text(stringResource(R.string.button_max_increment)) }
 
         Text(stringResource(R.string.label_shuffle, if (shuffle) onState else offState), Modifier.padding(vertical = 4.dp))
         Button(onClick = { scope.launch { sessionSettings.setShuffle(!shuffle) } }) { Text(stringResource(R.string.button_toggle_shuffle)) }
@@ -219,6 +197,26 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings,
                 Button(onClick = { activeService.acknowledgeFinished() }) { Text(stringResource(R.string.button_done)) }
             }
             SessionState.Closed, null -> Unit
+        }
+
+        if (sessionState == SessionState.Playing || sessionState == SessionState.Stopped) {
+            PauseDurationControls(pauseDurationMillis) { millis ->
+                scope.launch { sessionSettings.setPauseDurationMillis(millis) }
+                activeService.setPauseDurationMillis(millis)
+            }
+
+            StopIntervalControls(
+                stopIntervalMinMillis = stopIntervalMinMillis,
+                stopIntervalMaxMillis = stopIntervalMaxMillis,
+                onMinChange = { millis ->
+                    scope.launch { sessionSettings.setStopIntervalMinMillis(millis) }
+                    activeService.setStopInterval(millis, stopIntervalMaxMillis)
+                },
+                onMaxChange = { millis ->
+                    scope.launch { sessionSettings.setStopIntervalMaxMillis(millis) }
+                    activeService.setStopInterval(stopIntervalMinMillis, millis)
+                },
+            )
         }
 
         Button(onClick = {
@@ -253,6 +251,42 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings,
         onDispose {
             serviceConnection?.let { context.unbindService(it) }
         }
+    }
+}
+
+@Composable
+private fun PauseDurationControls(pauseDurationMillis: Int, onChange: (Int) -> Unit) {
+    Text(stringResource(R.string.label_pause, pauseDurationMillis / 1000), Modifier.padding(vertical = 4.dp))
+    Button(onClick = { onChange((pauseDurationMillis - 1_000).coerceIn(1_000, 30_000)) }) {
+        Text(stringResource(R.string.button_decrement_1s))
+    }
+    Button(onClick = { onChange((pauseDurationMillis + 1_000).coerceIn(1_000, 30_000)) }) {
+        Text(stringResource(R.string.button_increment_1s))
+    }
+}
+
+@Composable
+private fun StopIntervalControls(
+    stopIntervalMinMillis: Int,
+    stopIntervalMaxMillis: Int,
+    onMinChange: (Int) -> Unit,
+    onMaxChange: (Int) -> Unit,
+) {
+    Text(
+        stringResource(R.string.label_stop_interval, stopIntervalMinMillis / 1000, stopIntervalMaxMillis / 1000),
+        Modifier.padding(vertical = 4.dp),
+    )
+    Button(onClick = { onMinChange((stopIntervalMinMillis - 1_000).coerceIn(1_000, stopIntervalMaxMillis - 1_000)) }) {
+        Text(stringResource(R.string.button_min_decrement))
+    }
+    Button(onClick = { onMinChange((stopIntervalMinMillis + 1_000).coerceIn(1_000, stopIntervalMaxMillis - 1_000)) }) {
+        Text(stringResource(R.string.button_min_increment))
+    }
+    Button(onClick = { onMaxChange((stopIntervalMaxMillis - 1_000).coerceIn(stopIntervalMinMillis + 1_000, 60_000)) }) {
+        Text(stringResource(R.string.button_max_decrement))
+    }
+    Button(onClick = { onMaxChange((stopIntervalMaxMillis + 1_000).coerceIn(stopIntervalMinMillis + 1_000, 60_000)) }) {
+        Text(stringResource(R.string.button_max_increment))
     }
 }
 

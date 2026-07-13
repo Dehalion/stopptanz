@@ -79,6 +79,24 @@ class SessionEngineTest {
     }
 
     @Test
+    fun `setStopInterval does not alter a delay already computed, only the next call`() {
+        val e = engine(Mode.FREEZE_DANCE, minMillis = 5_000, maxMillis = 5_000)
+        val inFlightDelay = e.nextStopDelayMillis()
+        e.setStopInterval(StopInterval(20_000, 20_000))
+        assertEquals(5_000, inFlightDelay)
+        assertEquals(20_000, e.nextStopDelayMillis())
+    }
+
+    @Test
+    fun `setPauseDurationMillis does not alter a value already captured, only the next read`() {
+        val e = engine(Mode.FREEZE_DANCE, pauseDurationMillis = 5_000)
+        val capturedForInFlightPause = e.pauseDurationMillis
+        e.setPauseDurationMillis(9_000)
+        assertEquals(5_000, capturedForInFlightPause)
+        assertEquals(9_000, e.pauseDurationMillis)
+    }
+
+    @Test
     fun `orderedTracks preserves playlist order when shuffle is off`() {
         val playlist = Playlist(tracks = listOf("a.mp3", "b.mp3", "c.mp3"), shuffle = false)
         val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
