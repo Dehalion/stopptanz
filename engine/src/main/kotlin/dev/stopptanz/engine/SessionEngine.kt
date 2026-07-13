@@ -55,4 +55,11 @@ class SessionEngine(
         check(mode == Mode.FREEZE_DANCE) { "Auto-resume only applies in Freeze Dance mode" }
         state = SessionState.Playing
     }
+
+    fun close() {
+        check(state is SessionState.Playing || state is SessionState.Stopped || state is SessionState.Finished) {
+            "Cannot Close from $state"
+        }
+        state = SessionState.Closed
+    }
 }

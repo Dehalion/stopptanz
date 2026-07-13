@@ -208,7 +208,7 @@ class PlaybackService : MediaSessionService() {
                 getString(R.string.notification_stopped_resuming, modeLabel)
             }
             SessionState.Finished -> getString(R.string.notification_session_finished, modeLabel)
-            null -> getString(R.string.notification_session_running, modeLabel)
+            SessionState.Closed, null -> getString(R.string.notification_session_running, modeLabel)
         }
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
@@ -250,6 +250,17 @@ class PlaybackService : MediaSessionService() {
     /** Session acknowledged Finished (host tapped Done) — tear down and give up the foreground notification. */
     fun acknowledgeFinished() {
         adapter?.cancelJobs()
+        endSession()
+    }
+
+    /** Host tapped End Session — tears the Session down from any active state and returns to Playlist setup. */
+    fun closeSession() {
+        if (_sessionState.value == null) return
+        adapter?.close()
+        endSession()
+    }
+
+    private fun endSession() {
         adapter = null
         _currentMode.value = null
         _sessionState.value = null

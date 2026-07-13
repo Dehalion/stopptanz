@@ -17,10 +17,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -114,6 +116,7 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings,
     var boundService by remember { mutableStateOf<PlaybackService?>(null) }
     var serviceConnection by remember { mutableStateOf<ServiceConnection?>(null) }
     var activeSessionMode by remember { mutableStateOf(Mode.FREEZE_DANCE) }
+    var showEndSessionConfirmation by remember { mutableStateOf(false) }
 
     val requestNotificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -218,7 +221,34 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings,
                 Text(stringResource(R.string.label_finished), Modifier.padding(vertical = 4.dp))
                 Button(onClick = { activeService.acknowledgeFinished() }) { Text(stringResource(R.string.button_done)) }
             }
-            null -> Unit
+            SessionState.Closed, null -> Unit
+        }
+
+        Button(onClick = {
+            if (sessionState == SessionState.Playing) {
+                showEndSessionConfirmation = true
+            } else {
+                activeService.closeSession()
+            }
+        }) { Text(stringResource(R.string.button_end_session)) }
+
+        if (showEndSessionConfirmation) {
+            AlertDialog(
+                onDismissRequest = { showEndSessionConfirmation = false },
+                title = { Text(stringResource(R.string.dialog_end_session_title)) },
+                text = { Text(stringResource(R.string.dialog_end_session_message)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showEndSessionConfirmation = false
+                        activeService.closeSession()
+                    }) { Text(stringResource(R.string.dialog_end_session_confirm)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showEndSessionConfirmation = false }) {
+                        Text(stringResource(R.string.dialog_end_session_cancel))
+                    }
+                },
+            )
         }
     }
 

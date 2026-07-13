@@ -30,6 +30,11 @@
     <string name="status_stopped_resuming">Gestoppt — wird automatisch fortgesetzt…</string>
     <string name="label_finished">Abgeschlossen</string>
     <string name="button_done">Fertig</string>
+    <string name="button_end_session">Sitzung beenden</string>
+    <string name="dialog_end_session_title">Sitzung beenden?</string>
+    <string name="dialog_end_session_message">Dies stoppt die Wiedergabe und beendet die aktuelle Sitzung.</string>
+    <string name="dialog_end_session_confirm">Sitzung beenden</string>
+    <string name="dialog_end_session_cancel">Abbrechen</string>
 
     <string name="status_loading">Wird geladen…</string>
     <string name="status_no_folder_selected">Noch kein Ordner ausgewählt.</string>

@@ -86,6 +86,13 @@ class SessionPlaybackAdapter(
         autoStopJob?.cancel()
     }
 
+    fun close() {
+        cancelJobs()
+        engine.close()
+        player.pause()
+        onStateChanged(engine.state)
+    }
+
     fun release() {
         cancelJobs()
         player.release()

@@ -30,6 +30,11 @@
     <string name="status_stopped_resuming">Stopped — resuming automatically…</string>
     <string name="label_finished">Finished</string>
     <string name="button_done">Done</string>
+    <string name="button_end_session">End Session</string>
+    <string name="dialog_end_session_title">End Session?</string>
+    <string name="dialog_end_session_message">This will stop playback and end the current Session.</string>
+    <string name="dialog_end_session_confirm">End Session</string>
+    <string name="dialog_end_session_cancel">Cancel</string>
 
     <string name="status_loading">Loading…</string>
     <string name="status_no_folder_selected">No folder selected yet.</string>

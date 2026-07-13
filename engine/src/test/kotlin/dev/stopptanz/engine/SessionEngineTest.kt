@@ -108,6 +108,37 @@ class SessionEngineTest {
     }
 
     @Test
+    fun `close transitions from Playing to Closed`() {
+        val e = engine(Mode.FREEZE_DANCE)
+        e.close()
+        assertEquals(SessionState.Closed, e.state)
+    }
+
+    @Test
+    fun `close transitions from Stopped to Closed`() {
+        val e = engine(Mode.FREEZE_DANCE)
+        e.stop()
+        e.close()
+        assertEquals(SessionState.Closed, e.state)
+    }
+
+    @Test
+    fun `close transitions from Finished to Closed`() {
+        val playlist = Playlist(tracks = listOf("a.mp3"), loop = false)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        e.onPlaylistEnded()
+        e.close()
+        assertEquals(SessionState.Closed, e.state)
+    }
+
+    @Test
+    fun `close rejects when already Closed`() {
+        val e = engine(Mode.FREEZE_DANCE)
+        e.close()
+        assertFailsWith<IllegalStateException> { e.close() }
+    }
+
+    @Test
     fun `Finished state rejects Stop, Resume, and onPauseElapsed`() {
         val playlist = Playlist(tracks = listOf("a.mp3"), loop = false)
         val e = engine(Mode.MUSICAL_CHAIRS, playlist = playlist)

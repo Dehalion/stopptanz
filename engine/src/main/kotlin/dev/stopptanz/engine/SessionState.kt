@@ -4,4 +4,5 @@ sealed class SessionState {
     data object Playing : SessionState()
     data object Stopped : SessionState()
     data object Finished : SessionState()
+    data object Closed : SessionState()
 }
