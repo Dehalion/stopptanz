@@ -25,9 +25,9 @@
     <string name="toggle_state_on">On</string>
     <string name="toggle_state_off">Off</string>
 
-    <string name="label_current_track">Playing: %1$s</string>
-    <string name="label_next_track">Next: %1$s</string>
-    <string name="label_next_track_none">Next: —</string>
+    <string name="label_now_playing">Now Playing</string>
+    <string name="label_next_track_title">Next Track</string>
+    <string name="label_next_track_placeholder">—</string>
     <string name="label_track_position">Track %1$d of %2$d</string>
     <string name="label_track_duration">%1$s / %2$s</string>
     <plurals name="label_tracks_remaining">

@@ -11,16 +11,19 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -45,6 +48,16 @@ import dev.stopptanz.app.session.PlaybackPosition
 import dev.stopptanz.app.session.PlaybackService
 import dev.stopptanz.app.session.SessionSettings
 import dev.stopptanz.app.settings.SettingsRepository
+import dev.stopptanz.app.ui.components.NeonCard
+import dev.stopptanz.app.ui.components.NeonLabel
+import dev.stopptanz.app.ui.components.NeonOutlineButton
+import dev.stopptanz.app.ui.components.NeonPrimaryButton
+import dev.stopptanz.app.ui.components.NeonSubtext
+import dev.stopptanz.app.ui.components.NeonTimerText
+import dev.stopptanz.app.ui.components.NeonTitle
+import dev.stopptanz.app.ui.components.NeonValue
+import dev.stopptanz.app.ui.theme.NeonBackgroundBrush
+import dev.stopptanz.app.ui.theme.StopptanzTheme
 import dev.stopptanz.engine.Mode
 import dev.stopptanz.engine.Playlist
 import dev.stopptanz.engine.SessionState
@@ -89,32 +102,26 @@ fun StopptanzApp(playlistRepository: PlaylistRepository, sessionSettings: Sessio
         state = playlistRepository.loadPersistedSelection()
     }
 
-    MaterialTheme {
-        Surface(Modifier.fillMaxSize()) {
-            Box(Modifier.fillMaxSize()) {
-                Column(
-                    Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(stringResource(R.string.app_name))
-                    Text(state.statusText(), Modifier.padding(vertical = 8.dp))
+    StopptanzTheme {
+        Box(Modifier.fillMaxSize().background(NeonBackgroundBrush)) {
+            Column(
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                NeonTitle(stringResource(R.string.app_name), Modifier.fillMaxWidth().padding(bottom = 4.dp))
+                NeonSubtext(state.statusText(), Modifier.padding(bottom = 20.dp))
 
-                    val selected = state as? PlaylistSelectionState.Selected
-                    if (selected != null) {
-                        SessionSection(
-                            selected.playlist,
-                            sessionSettings,
-                            onPickFolder = { pickFolder.launch(null) },
-                            onPickTrack = { pickTrack.launch(arrayOf("audio/*")) },
-                        )
-                    } else {
-                        Button(onClick = { pickFolder.launch(null) }) {
-                            Text(stringResource(R.string.pick_music_folder))
-                        }
-                        Button(onClick = { pickTrack.launch(arrayOf("audio/*")) }) {
-                            Text(stringResource(R.string.pick_track))
-                        }
-                    }
+                val selected = state as? PlaylistSelectionState.Selected
+                if (selected != null) {
+                    SessionSection(
+                        selected.playlist,
+                        sessionSettings,
+                        onPickFolder = { pickFolder.launch(null) },
+                        onPickTrack = { pickTrack.launch(arrayOf("audio/*")) },
+                    )
+                } else {
+                    NeonOutlineButton(stringResource(R.string.pick_music_folder), onClick = { pickFolder.launch(null) }, modifier = Modifier.padding(bottom = 10.dp))
+                    NeonOutlineButton(stringResource(R.string.pick_track), onClick = { pickTrack.launch(arrayOf("audio/*")) })
                 }
             }
         }
@@ -179,35 +186,62 @@ private fun SessionSection(
 
     val activeService = boundService
     if (activeService == null || sessionState == null) {
-        Button(onClick = onPickFolder) {
-            Text(stringResource(R.string.pick_music_folder))
-        }
-        Button(onClick = onPickTrack) {
-            Text(stringResource(R.string.pick_track))
-        }
-
-        Text(stringResource(R.string.label_mode, mode.label()), Modifier.padding(vertical = 4.dp))
-        Button(onClick = { scope.launch { sessionSettings.setMode(Mode.FREEZE_DANCE) } }) { Text(stringResource(R.string.mode_freeze_dance)) }
-        Button(onClick = { scope.launch { sessionSettings.setMode(Mode.MUSICAL_CHAIRS) } }) { Text(stringResource(R.string.mode_musical_chairs)) }
-
-        PauseDurationControls(pauseDurationMillis) { millis ->
-            scope.launch { sessionSettings.setPauseDurationMillis(millis) }
+        NeonCard(Modifier.padding(bottom = 14.dp)) {
+            NeonLabel(stringResource(R.string.pick_music_folder))
+            Spacer(Modifier.height(10.dp))
+            NeonOutlineButton(stringResource(R.string.pick_music_folder), onClick = onPickFolder, modifier = Modifier.padding(bottom = 8.dp))
+            NeonOutlineButton(stringResource(R.string.pick_track), onClick = onPickTrack)
         }
 
-        StopIntervalControls(
-            stopIntervalMinMillis = stopIntervalMinMillis,
-            stopIntervalMaxMillis = stopIntervalMaxMillis,
-            onMinChange = { millis -> scope.launch { sessionSettings.setStopIntervalMinMillis(millis) } },
-            onMaxChange = { millis -> scope.launch { sessionSettings.setStopIntervalMaxMillis(millis) } },
-        )
+        NeonLabel(stringResource(R.string.label_mode, mode.label()), Modifier.fillMaxWidth().padding(bottom = 8.dp))
+        Row(Modifier.fillMaxWidth().padding(bottom = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            NeonOutlineButton(
+                stringResource(R.string.mode_freeze_dance),
+                onClick = { scope.launch { sessionSettings.setMode(Mode.FREEZE_DANCE) } },
+                modifier = Modifier.weight(1f),
+                active = mode == Mode.FREEZE_DANCE,
+            )
+            NeonOutlineButton(
+                stringResource(R.string.mode_musical_chairs),
+                onClick = { scope.launch { sessionSettings.setMode(Mode.MUSICAL_CHAIRS) } },
+                modifier = Modifier.weight(1f),
+                active = mode == Mode.MUSICAL_CHAIRS,
+            )
+        }
 
-        Text(stringResource(R.string.label_shuffle, if (shuffle) onState else offState), Modifier.padding(vertical = 4.dp))
-        Button(onClick = { scope.launch { sessionSettings.setShuffle(!shuffle) } }) { Text(stringResource(R.string.button_toggle_shuffle)) }
+        NeonCard(Modifier.padding(bottom = 14.dp)) {
+            PauseDurationControls(pauseDurationMillis) { millis ->
+                scope.launch { sessionSettings.setPauseDurationMillis(millis) }
+            }
+        }
 
-        Text(stringResource(R.string.label_loop, if (loop) onState else offState), Modifier.padding(vertical = 4.dp))
-        Button(onClick = { scope.launch { sessionSettings.setLoop(!loop) } }) { Text(stringResource(R.string.button_toggle_loop)) }
+        NeonCard(Modifier.padding(bottom = 14.dp)) {
+            StopIntervalControls(
+                stopIntervalMinMillis = stopIntervalMinMillis,
+                stopIntervalMaxMillis = stopIntervalMaxMillis,
+                onMinChange = { millis -> scope.launch { sessionSettings.setStopIntervalMinMillis(millis) } },
+                onMaxChange = { millis -> scope.launch { sessionSettings.setStopIntervalMaxMillis(millis) } },
+            )
+        }
 
-        Button(onClick = onClick@{
+        Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            NeonOutlineButton(
+                stringResource(R.string.label_shuffle, if (shuffle) onState else offState),
+                onClick = { scope.launch { sessionSettings.setShuffle(!shuffle) } },
+                modifier = Modifier.weight(1f),
+                active = shuffle,
+            )
+            NeonOutlineButton(
+                stringResource(R.string.label_loop, if (loop) onState else offState),
+                onClick = { scope.launch { sessionSettings.setLoop(!loop) } },
+                modifier = Modifier.weight(1f),
+                active = loop,
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        NeonPrimaryButton(stringResource(R.string.button_start_session), onClick@{
             val service = boundService ?: return@onClick
             if (sessionState != null) return@onClick
             activeSessionMode = mode
@@ -216,50 +250,58 @@ private fun SessionSection(
                 requestNotificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }
             service.startSession(sessionPlaylist, mode, pauseDurationMillis, stopIntervalMinMillis, stopIntervalMaxMillis)
-        }) {
-            Text(stringResource(R.string.button_start_session))
-        }
+        })
     } else {
+        if (sessionState == SessionState.Playing || sessionState == SessionState.Stopped) {
+            trackStatus?.let { TrackStatusDisplay(it, playbackPosition) }
+        }
+
         when (sessionState) {
-            SessionState.Playing -> Button(onClick = { activeService.stop() }) { Text(stringResource(R.string.button_stop)) }
+            SessionState.Playing -> NeonPrimaryButton(stringResource(R.string.button_stop), onClick = { activeService.stop() }, modifier = Modifier.padding(top = 8.dp))
             SessionState.Stopped ->
-                Button(onClick = { activeService.resume() }) { Text(stringResource(R.string.button_resume)) }
+                NeonPrimaryButton(stringResource(R.string.button_resume), onClick = { activeService.resume() }, modifier = Modifier.padding(top = 8.dp))
             SessionState.Finished -> {
-                Text(stringResource(R.string.label_finished), Modifier.padding(vertical = 4.dp))
-                Button(onClick = { activeService.acknowledgeFinished() }) { Text(stringResource(R.string.button_done)) }
+                NeonLabel(stringResource(R.string.label_finished), Modifier.padding(vertical = 4.dp))
+                NeonPrimaryButton(stringResource(R.string.button_done), onClick = { activeService.acknowledgeFinished() })
             }
             SessionState.Closed, null -> Unit
         }
 
         if (sessionState == SessionState.Playing || sessionState == SessionState.Stopped) {
-            trackStatus?.let { TrackStatusDisplay(it, playbackPosition) }
-
-            PauseDurationControls(pauseDurationMillis) { millis ->
-                scope.launch { sessionSettings.setPauseDurationMillis(millis) }
-                activeService.setPauseDurationMillis(millis)
+            NeonCard(Modifier.padding(vertical = 14.dp)) {
+                PauseDurationControls(pauseDurationMillis) { millis ->
+                    scope.launch { sessionSettings.setPauseDurationMillis(millis) }
+                    activeService.setPauseDurationMillis(millis)
+                }
             }
 
-            StopIntervalControls(
-                stopIntervalMinMillis = stopIntervalMinMillis,
-                stopIntervalMaxMillis = stopIntervalMaxMillis,
-                onMinChange = { millis ->
-                    scope.launch { sessionSettings.setStopIntervalMinMillis(millis) }
-                    activeService.setStopInterval(millis, stopIntervalMaxMillis)
-                },
-                onMaxChange = { millis ->
-                    scope.launch { sessionSettings.setStopIntervalMaxMillis(millis) }
-                    activeService.setStopInterval(stopIntervalMinMillis, millis)
-                },
-            )
+            NeonCard {
+                StopIntervalControls(
+                    stopIntervalMinMillis = stopIntervalMinMillis,
+                    stopIntervalMaxMillis = stopIntervalMaxMillis,
+                    onMinChange = { millis ->
+                        scope.launch { sessionSettings.setStopIntervalMinMillis(millis) }
+                        activeService.setStopInterval(millis, stopIntervalMaxMillis)
+                    },
+                    onMaxChange = { millis ->
+                        scope.launch { sessionSettings.setStopIntervalMaxMillis(millis) }
+                        activeService.setStopInterval(stopIntervalMinMillis, millis)
+                    },
+                )
+            }
         }
 
-        Button(onClick = {
-            if (sessionState == SessionState.Playing) {
-                showEndSessionConfirmation = true
-            } else {
-                activeService.closeSession()
-            }
-        }) { Text(stringResource(R.string.button_end_session)) }
+        NeonOutlineButton(
+            stringResource(R.string.button_end_session),
+            onClick = {
+                if (sessionState == SessionState.Playing) {
+                    showEndSessionConfirmation = true
+                } else {
+                    activeService.closeSession()
+                }
+            },
+            modifier = Modifier.padding(top = 16.dp),
+        )
 
         if (showEndSessionConfirmation) {
             AlertDialog(
@@ -290,18 +332,23 @@ private fun SessionSection(
 
 @Composable
 private fun TrackStatusDisplay(trackStatus: TrackStatus, playbackPosition: PlaybackPosition?) {
-    Text(stringResource(R.string.label_current_track, trackStatus.current.name), Modifier.padding(vertical = 4.dp))
-    Text(
-        trackStatus.next?.let { stringResource(R.string.label_next_track, it.name) }
-            ?: stringResource(R.string.label_next_track_none),
-        Modifier.padding(vertical = 4.dp),
-    )
-    Text(trackStatus.remaining.displayText(), Modifier.padding(vertical = 4.dp))
-    playbackPosition?.let {
-        Text(
-            stringResource(R.string.label_track_duration, it.formatCurrent(), it.formatTotal()),
-            Modifier.padding(vertical = 4.dp),
+    NeonCard {
+        NeonLabel(stringResource(R.string.label_now_playing))
+        NeonValue(trackStatus.current.name, Modifier.padding(bottom = 8.dp))
+        playbackPosition?.let {
+            NeonTimerText(it.formatCurrent(), Modifier.fillMaxWidth())
+            NeonSubtext(
+                stringResource(R.string.label_track_duration, it.formatCurrent(), it.formatTotal()),
+                Modifier.fillMaxWidth().padding(bottom = 4.dp),
+            )
+        }
+        Spacer(Modifier.height(8.dp))
+        NeonLabel(stringResource(R.string.label_next_track_title))
+        NeonValue(
+            trackStatus.next?.name ?: stringResource(R.string.label_next_track_placeholder),
+            Modifier.padding(bottom = 8.dp),
         )
+        NeonSubtext(trackStatus.remaining.displayText())
     }
 }
 
@@ -313,12 +360,10 @@ private fun TrackRemaining.displayText(): String = when (this) {
 
 @Composable
 private fun PauseDurationControls(pauseDurationMillis: Int, onChange: (Int) -> Unit) {
-    Text(stringResource(R.string.label_pause, pauseDurationMillis / 1000), Modifier.padding(vertical = 4.dp))
-    Button(onClick = { onChange((pauseDurationMillis - 1_000).coerceIn(1_000, 30_000)) }) {
-        Text(stringResource(R.string.button_decrement_1s))
-    }
-    Button(onClick = { onChange((pauseDurationMillis + 1_000).coerceIn(1_000, 30_000)) }) {
-        Text(stringResource(R.string.button_increment_1s))
+    NeonLabel(stringResource(R.string.label_pause, pauseDurationMillis / 1000), Modifier.padding(bottom = 8.dp))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        NeonOutlineButton(stringResource(R.string.button_decrement_1s), onClick = { onChange((pauseDurationMillis - 1_000).coerceIn(1_000, 30_000)) }, modifier = Modifier.weight(1f))
+        NeonOutlineButton(stringResource(R.string.button_increment_1s), onClick = { onChange((pauseDurationMillis + 1_000).coerceIn(1_000, 30_000)) }, modifier = Modifier.weight(1f))
     }
 }
 
@@ -329,21 +374,17 @@ private fun StopIntervalControls(
     onMinChange: (Int) -> Unit,
     onMaxChange: (Int) -> Unit,
 ) {
-    Text(
+    NeonLabel(
         stringResource(R.string.label_stop_interval, stopIntervalMinMillis / 1000, stopIntervalMaxMillis / 1000),
-        Modifier.padding(vertical = 4.dp),
+        Modifier.padding(bottom = 8.dp),
     )
-    Button(onClick = { onMinChange((stopIntervalMinMillis - 1_000).coerceIn(1_000, stopIntervalMaxMillis - 1_000)) }) {
-        Text(stringResource(R.string.button_min_decrement))
+    Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        NeonOutlineButton(stringResource(R.string.button_min_decrement), onClick = { onMinChange((stopIntervalMinMillis - 1_000).coerceIn(1_000, stopIntervalMaxMillis - 1_000)) }, modifier = Modifier.weight(1f))
+        NeonOutlineButton(stringResource(R.string.button_min_increment), onClick = { onMinChange((stopIntervalMinMillis + 1_000).coerceIn(1_000, stopIntervalMaxMillis - 1_000)) }, modifier = Modifier.weight(1f))
     }
-    Button(onClick = { onMinChange((stopIntervalMinMillis + 1_000).coerceIn(1_000, stopIntervalMaxMillis - 1_000)) }) {
-        Text(stringResource(R.string.button_min_increment))
-    }
-    Button(onClick = { onMaxChange((stopIntervalMaxMillis - 1_000).coerceIn(stopIntervalMinMillis + 1_000, 60_000)) }) {
-        Text(stringResource(R.string.button_max_decrement))
-    }
-    Button(onClick = { onMaxChange((stopIntervalMaxMillis + 1_000).coerceIn(stopIntervalMinMillis + 1_000, 60_000)) }) {
-        Text(stringResource(R.string.button_max_increment))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        NeonOutlineButton(stringResource(R.string.button_max_decrement), onClick = { onMaxChange((stopIntervalMaxMillis - 1_000).coerceIn(stopIntervalMinMillis + 1_000, 60_000)) }, modifier = Modifier.weight(1f))
+        NeonOutlineButton(stringResource(R.string.button_max_increment), onClick = { onMaxChange((stopIntervalMaxMillis + 1_000).coerceIn(stopIntervalMinMillis + 1_000, 60_000)) }, modifier = Modifier.weight(1f))
     }
 }
 
