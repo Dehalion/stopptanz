@@ -16,6 +16,7 @@ import androidx.media3.session.MediaSessionService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaStyleNotificationHelper
 import androidx.media3.session.SessionResult
+import dev.stopptanz.app.R
 import dev.stopptanz.engine.Mode
 import dev.stopptanz.engine.Playlist
 import dev.stopptanz.engine.SessionEngine
@@ -193,21 +194,21 @@ class PlaybackService : MediaSessionService() {
 
     private fun buildNotification(mode: Mode, state: SessionState?): Notification {
         val modeLabel = when (mode) {
-            Mode.FREEZE_DANCE -> "Freeze Dance"
-            Mode.MUSICAL_CHAIRS -> "Musical Chairs"
+            Mode.FREEZE_DANCE -> getString(R.string.mode_freeze_dance)
+            Mode.MUSICAL_CHAIRS -> getString(R.string.mode_musical_chairs)
         }
         val statusText = when (state) {
-            SessionState.Playing -> "$modeLabel Session running"
+            SessionState.Playing -> getString(R.string.notification_session_running, modeLabel)
             SessionState.Stopped -> if (mode == Mode.MUSICAL_CHAIRS) {
-                "$modeLabel Session stopped"
+                getString(R.string.notification_session_stopped, modeLabel)
             } else {
-                "$modeLabel Stopped — resuming automatically…"
+                getString(R.string.notification_stopped_resuming, modeLabel)
             }
-            SessionState.Finished -> "$modeLabel Session finished"
-            null -> "$modeLabel Session running"
+            SessionState.Finished -> getString(R.string.notification_session_finished, modeLabel)
+            null -> getString(R.string.notification_session_running, modeLabel)
         }
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("Stopptanz")
+            .setContentTitle(getString(R.string.app_name))
             .setContentText(statusText)
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setOngoing(true)
@@ -219,7 +220,7 @@ class PlaybackService : MediaSessionService() {
         val manager = getSystemService(NotificationManager::class.java)
         val channel = NotificationChannel(
             NOTIFICATION_CHANNEL_ID,
-            "Playback",
+            getString(R.string.notification_channel_playback),
             NotificationManager.IMPORTANCE_LOW,
         )
         manager.createNotificationChannel(channel)

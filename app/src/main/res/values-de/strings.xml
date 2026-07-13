@@ -1,3 +1,46 @@
 <resources>
     <string name="app_name">Stopptanz</string>
+
+    <string name="pick_music_folder">Musikordner auswählen</string>
+
+    <string name="label_mode">Modus: %1$s</string>
+    <string name="mode_freeze_dance">Freeze Dance</string>
+    <string name="mode_musical_chairs">Musical Chairs</string>
+
+    <string name="label_pause">Pause: %1$ds</string>
+    <string name="button_decrement_1s">-1s</string>
+    <string name="button_increment_1s">+1s</string>
+
+    <string name="label_stop_interval">Stop-Intervall: %1$ds–%2$ds</string>
+    <string name="button_min_decrement">Min -1s</string>
+    <string name="button_min_increment">Min +1s</string>
+    <string name="button_max_decrement">Max -1s</string>
+    <string name="button_max_increment">Max +1s</string>
+
+    <string name="label_shuffle">Shuffle: %1$s</string>
+    <string name="button_toggle_shuffle">Shuffle umschalten</string>
+    <string name="label_loop">Loop: %1$s</string>
+    <string name="button_toggle_loop">Loop umschalten</string>
+    <string name="toggle_state_on">An</string>
+    <string name="toggle_state_off">Aus</string>
+
+    <string name="button_start_session">Sitzung starten</string>
+    <string name="button_stop">Stopp</string>
+    <string name="button_resume">Fortsetzen</string>
+    <string name="status_stopped_resuming">Gestoppt — wird automatisch fortgesetzt…</string>
+    <string name="label_finished">Abgeschlossen</string>
+    <string name="button_done">Fertig</string>
+
+    <string name="status_loading">Wird geladen…</string>
+    <string name="status_no_folder_selected">Noch kein Ordner ausgewählt.</string>
+    <string name="status_folder_access_needed">Ordnerzugriff wird benötigt, um Musik auszuwählen. Bitte versuche es erneut.</string>
+    <string name="status_folder_inaccessible">Ordner \"%1$s\" ist nicht mehr zugänglich. Bitte wähle ihn erneut aus.</string>
+    <string name="status_folder_empty">Ordner \"%1$s\" enthält keine Audiodateien.</string>
+    <string name="status_folder_selected">Ordner: %1$s (%2$d Titel)</string>
+
+    <string name="notification_channel_playback">Wiedergabe</string>
+    <string name="notification_session_running">%1$s-Sitzung läuft</string>
+    <string name="notification_session_stopped">%1$s-Sitzung gestoppt</string>
+    <string name="notification_stopped_resuming">%1$s gestoppt — wird automatisch fortgesetzt…</string>
+    <string name="notification_session_finished">%1$s-Sitzung abgeschlossen</string>
 </resources>

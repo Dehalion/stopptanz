@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import dev.stopptanz.app.playlist.PlaylistRepository
@@ -79,10 +80,10 @@ fun StopptanzApp(playlistRepository: PlaylistRepository, sessionSettings: Sessio
                     Modifier.fillMaxSize().padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text("Stopptanz")
+                    Text(stringResource(R.string.app_name))
                     Text(state.statusText(), Modifier.padding(vertical = 8.dp))
                     Button(onClick = { pickFolder.launch(null) }) {
-                        Text("Pick music folder")
+                        Text(stringResource(R.string.pick_music_folder))
                     }
 
                     val selected = state as? PlaylistSelectionState.Selected
@@ -115,47 +116,53 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings)
         ActivityResultContracts.RequestPermission(),
     ) { /* no-op: absence just means no visible notification, FGS still runs */ }
 
+    val onState = stringResource(R.string.toggle_state_on)
+    val offState = stringResource(R.string.toggle_state_off)
+
     val activeService = boundService
     if (activeService == null || sessionState == null) {
-        Text("Mode: ${mode.label()}", Modifier.padding(vertical = 4.dp))
-        Button(onClick = { scope.launch { sessionSettings.setMode(Mode.FREEZE_DANCE) } }) { Text("Freeze Dance") }
-        Button(onClick = { scope.launch { sessionSettings.setMode(Mode.MUSICAL_CHAIRS) } }) { Text("Musical Chairs") }
+        Text(stringResource(R.string.label_mode, mode.label()), Modifier.padding(vertical = 4.dp))
+        Button(onClick = { scope.launch { sessionSettings.setMode(Mode.FREEZE_DANCE) } }) { Text(stringResource(R.string.mode_freeze_dance)) }
+        Button(onClick = { scope.launch { sessionSettings.setMode(Mode.MUSICAL_CHAIRS) } }) { Text(stringResource(R.string.mode_musical_chairs)) }
 
-        Text("Pause: ${pauseDurationMillis / 1000}s", Modifier.padding(vertical = 4.dp))
+        Text(stringResource(R.string.label_pause, pauseDurationMillis / 1000), Modifier.padding(vertical = 4.dp))
         Button(onClick = {
             scope.launch { sessionSettings.setPauseDurationMillis((pauseDurationMillis - 1_000).coerceIn(1_000, 30_000)) }
-        }) { Text("-1s") }
+        }) { Text(stringResource(R.string.button_decrement_1s)) }
         Button(onClick = {
             scope.launch { sessionSettings.setPauseDurationMillis((pauseDurationMillis + 1_000).coerceIn(1_000, 30_000)) }
-        }) { Text("+1s") }
+        }) { Text(stringResource(R.string.button_increment_1s)) }
 
-        Text("Stop Interval: ${stopIntervalMinMillis / 1000}s–${stopIntervalMaxMillis / 1000}s", Modifier.padding(vertical = 4.dp))
+        Text(
+            stringResource(R.string.label_stop_interval, stopIntervalMinMillis / 1000, stopIntervalMaxMillis / 1000),
+            Modifier.padding(vertical = 4.dp),
+        )
         Button(onClick = {
             scope.launch {
                 sessionSettings.setStopIntervalMinMillis((stopIntervalMinMillis - 1_000).coerceIn(1_000, stopIntervalMaxMillis - 1_000))
             }
-        }) { Text("Min -1s") }
+        }) { Text(stringResource(R.string.button_min_decrement)) }
         Button(onClick = {
             scope.launch {
                 sessionSettings.setStopIntervalMinMillis((stopIntervalMinMillis + 1_000).coerceIn(1_000, stopIntervalMaxMillis - 1_000))
             }
-        }) { Text("Min +1s") }
+        }) { Text(stringResource(R.string.button_min_increment)) }
         Button(onClick = {
             scope.launch {
                 sessionSettings.setStopIntervalMaxMillis((stopIntervalMaxMillis - 1_000).coerceIn(stopIntervalMinMillis + 1_000, 60_000))
             }
-        }) { Text("Max -1s") }
+        }) { Text(stringResource(R.string.button_max_decrement)) }
         Button(onClick = {
             scope.launch {
                 sessionSettings.setStopIntervalMaxMillis((stopIntervalMaxMillis + 1_000).coerceIn(stopIntervalMinMillis + 1_000, 60_000))
             }
-        }) { Text("Max +1s") }
+        }) { Text(stringResource(R.string.button_max_increment)) }
 
-        Text("Shuffle: ${if (shuffle) "On" else "Off"}", Modifier.padding(vertical = 4.dp))
-        Button(onClick = { scope.launch { sessionSettings.setShuffle(!shuffle) } }) { Text("Toggle Shuffle") }
+        Text(stringResource(R.string.label_shuffle, if (shuffle) onState else offState), Modifier.padding(vertical = 4.dp))
+        Button(onClick = { scope.launch { sessionSettings.setShuffle(!shuffle) } }) { Text(stringResource(R.string.button_toggle_shuffle)) }
 
-        Text("Loop: ${if (loop) "On" else "Off"}", Modifier.padding(vertical = 4.dp))
-        Button(onClick = { scope.launch { sessionSettings.setLoop(!loop) } }) { Text("Toggle Loop") }
+        Text(stringResource(R.string.label_loop, if (loop) onState else offState), Modifier.padding(vertical = 4.dp))
+        Button(onClick = { scope.launch { sessionSettings.setLoop(!loop) } }) { Text(stringResource(R.string.button_toggle_loop)) }
 
         Button(onClick = onClick@{
             if (serviceConnection != null) return@onClick
@@ -184,24 +191,24 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings)
             ContextCompat.startForegroundService(context, intent)
             context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
         }) {
-            Text("Start Session")
+            Text(stringResource(R.string.button_start_session))
         }
     } else {
         when (sessionState) {
-            SessionState.Playing -> Button(onClick = { activeService.stop() }) { Text("Stop") }
+            SessionState.Playing -> Button(onClick = { activeService.stop() }) { Text(stringResource(R.string.button_stop)) }
             SessionState.Stopped -> if (activeSessionMode == Mode.MUSICAL_CHAIRS) {
-                Button(onClick = { activeService.resume() }) { Text("Resume") }
+                Button(onClick = { activeService.resume() }) { Text(stringResource(R.string.button_resume)) }
             } else {
-                Text("Stopped — resuming automatically…")
+                Text(stringResource(R.string.status_stopped_resuming))
             }
             SessionState.Finished -> {
-                Text("Finished", Modifier.padding(vertical = 4.dp))
+                Text(stringResource(R.string.label_finished), Modifier.padding(vertical = 4.dp))
                 Button(onClick = {
                     activeService.acknowledgeFinished()
                     serviceConnection?.let { context.unbindService(it) }
                     boundService = null
                     serviceConnection = null
-                }) { Text("Done") }
+                }) { Text(stringResource(R.string.button_done)) }
             }
             null -> Unit
         }
@@ -214,20 +221,22 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings)
     }
 }
 
+@Composable
 private fun Mode.label(): String = when (this) {
-    Mode.FREEZE_DANCE -> "Freeze Dance"
-    Mode.MUSICAL_CHAIRS -> "Musical Chairs"
+    Mode.FREEZE_DANCE -> stringResource(R.string.mode_freeze_dance)
+    Mode.MUSICAL_CHAIRS -> stringResource(R.string.mode_musical_chairs)
 }
 
+@Composable
 private fun PlaylistSelectionState.statusText(): String = when (this) {
-    PlaylistSelectionState.Loading -> "Loading…"
-    PlaylistSelectionState.NotSelected -> "No folder selected yet."
-    PlaylistSelectionState.PickerCancelled -> "Folder access is needed to pick music. Please try again."
+    PlaylistSelectionState.Loading -> stringResource(R.string.status_loading)
+    PlaylistSelectionState.NotSelected -> stringResource(R.string.status_no_folder_selected)
+    PlaylistSelectionState.PickerCancelled -> stringResource(R.string.status_folder_access_needed)
     is PlaylistSelectionState.PermissionUnavailable -> if (folderName != null) {
-        "Folder \"$folderName\" is no longer accessible. Please pick it again."
+        stringResource(R.string.status_folder_inaccessible, folderName)
     } else {
-        "Folder access is needed to pick music. Please try again."
+        stringResource(R.string.status_folder_access_needed)
     }
-    is PlaylistSelectionState.Empty -> "Folder \"$folderName\" has no audio files."
-    is PlaylistSelectionState.Selected -> "Folder: $folderName (${playlist.tracks.size} tracks)"
+    is PlaylistSelectionState.Empty -> stringResource(R.string.status_folder_empty, folderName)
+    is PlaylistSelectionState.Selected -> stringResource(R.string.status_folder_selected, folderName, playlist.tracks.size)
 }
