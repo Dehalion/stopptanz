@@ -9,7 +9,7 @@ One run of the game from start (playback begins) to stop (host ends it). Holds t
 _Avoid_: Game, round
 
 **Freeze Dance mode**:
-Music stops at a random point; after a fixed pause, playback resumes automatically without user action.
+Music stops at a random point; after a fixed pause, playback resumes automatically without user action. The host can also manually resume early, which cancels the pending automatic resume.
 _Avoid_: Musical chairs, elimination mode
 
 **Musical Chairs mode**:

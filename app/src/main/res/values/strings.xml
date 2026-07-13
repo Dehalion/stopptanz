@@ -27,7 +27,6 @@
     <string name="button_start_session">Start Session</string>
     <string name="button_stop">Stop</string>
     <string name="button_resume">Resume</string>
-    <string name="status_stopped_resuming">Stopped — resuming automatically…</string>
     <string name="label_finished">Finished</string>
     <string name="button_done">Done</string>
     <string name="button_end_session">End Session</string>
@@ -49,6 +48,5 @@
     <string name="notification_channel_playback">Playback</string>
     <string name="notification_session_running">%1$s Session running</string>
     <string name="notification_session_stopped">%1$s Session stopped</string>
-    <string name="notification_stopped_resuming">%1$s Stopped — resuming automatically…</string>
     <string name="notification_session_finished">%1$s Session finished</string>
 </resources>

@@ -15,7 +15,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaStyleNotificationHelper
-import androidx.media3.session.SessionResult
 import dev.stopptanz.app.R
 import dev.stopptanz.engine.Mode
 import dev.stopptanz.engine.Playlist
@@ -51,7 +50,6 @@ class PlaybackService : MediaSessionService() {
     private lateinit var routedPlayer: ForwardingPlayer
     private lateinit var mediaSession: MediaSession
     private var adapter: SessionPlaybackAdapter? = null
-    private val routedPlayerListeners = mutableListOf<Player.Listener>()
 
     private val _sessionState = MutableStateFlow<SessionState?>(null)
     val sessionState: StateFlow<SessionState?> = _sessionState
@@ -83,31 +81,6 @@ class PlaybackService : MediaSessionService() {
             // COMMAND_STOP is also stripped from available player commands below as
             // defense-in-depth, but override it here too in case any bridge calls it directly.
             override fun stop() = Unit
-
-            // Freeze Dance auto-resumes on its own — while Stopped in that mode, hide the
-            // Play affordance entirely rather than showing a control that silently no-ops,
-            // so the system UI matches the in-app button (which shows no Resume control here).
-            override fun getAvailableCommands(): Player.Commands {
-                val commands = super.getAvailableCommands()
-                return if (_currentMode.value == Mode.FREEZE_DANCE && _sessionState.value == SessionState.Stopped) {
-                    commands.buildUpon().remove(Player.COMMAND_PLAY_PAUSE).build()
-                } else {
-                    commands
-                }
-            }
-
-            // Track listeners ourselves (rather than only forwarding to the real ExoPlayer)
-            // so refreshAvailableCommands() can notify the system UI when our synthetic
-            // Freeze Dance gating above changes, independent of the real player's own events.
-            override fun addListener(listener: Player.Listener) {
-                routedPlayerListeners += listener
-                super.addListener(listener)
-            }
-
-            override fun removeListener(listener: Player.Listener) {
-                routedPlayerListeners -= listener
-                super.removeListener(listener)
-            }
         }
         mediaSession = MediaSession.Builder(this, routedPlayer)
             .setCallback(object : MediaSession.Callback {
@@ -126,19 +99,6 @@ class PlaybackService : MediaSessionService() {
                     )
                 }
 
-                // Freeze Dance auto-resumes on its own after its pause duration — a manual
-                // lock-screen tap must not be able to resume it early, matching the in-app UI
-                // which shows no Resume button for Freeze Dance while Stopped.
-                override fun onPlayerCommandRequest(
-                    session: MediaSession,
-                    controller: MediaSession.ControllerInfo,
-                    playerCommand: Int,
-                ): Int {
-                    val blockManualResume = playerCommand == Player.COMMAND_PLAY_PAUSE &&
-                        _currentMode.value == Mode.FREEZE_DANCE &&
-                        _sessionState.value == SessionState.Stopped
-                    return if (blockManualResume) SessionResult.RESULT_ERROR_NOT_SUPPORTED else SessionResult.RESULT_SUCCESS
-                }
             })
             .build()
     }
@@ -172,7 +132,6 @@ class PlaybackService : MediaSessionService() {
             onStateChanged = { state ->
                 _sessionState.value = state
                 updateNotification()
-                refreshAvailableCommands()
             },
         ).also { it.start() }
 
@@ -182,11 +141,6 @@ class PlaybackService : MediaSessionService() {
             buildNotification(mode, _sessionState.value),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
         )
-    }
-
-    private fun refreshAvailableCommands() {
-        val commands = routedPlayer.availableCommands
-        routedPlayerListeners.toList().forEach { it.onAvailableCommandsChanged(commands) }
     }
 
     private fun updateNotification() {
@@ -202,11 +156,7 @@ class PlaybackService : MediaSessionService() {
         }
         val statusText = when (state) {
             SessionState.Playing -> getString(R.string.notification_session_running, modeLabel)
-            SessionState.Stopped -> if (mode == Mode.MUSICAL_CHAIRS) {
-                getString(R.string.notification_session_stopped, modeLabel)
-            } else {
-                getString(R.string.notification_stopped_resuming, modeLabel)
-            }
+            SessionState.Stopped -> getString(R.string.notification_session_stopped, modeLabel)
             SessionState.Finished -> getString(R.string.notification_session_finished, modeLabel)
             SessionState.Closed, null -> getString(R.string.notification_session_running, modeLabel)
         }
@@ -230,11 +180,11 @@ class PlaybackService : MediaSessionService() {
     }
 
     // Guarded against invalid-state calls: SessionEngine.stop()/resume() throw when called
-    // outside their expected state (Playing/Stopped) or Mode (Musical Chairs manual resume
-    // only). The in-app button never hits this because Compose only renders the button
-    // matching the current state, but the system lock-screen/notification Play-Pause control
-    // can dispatch a stale/racy command (e.g. rapid double-tap) that the in-app button never
-    // could, which previously crashed the whole process.
+    // outside their expected state (Playing/Stopped). The in-app button never hits this
+    // because Compose only renders the button matching the current state, but the system
+    // lock-screen/notification Play-Pause control can dispatch a stale/racy command (e.g.
+    // rapid double-tap) that the in-app button never could, which previously crashed the
+    // whole process.
     fun stop() {
         if (_sessionState.value == SessionState.Playing) {
             adapter?.stop()
@@ -242,7 +192,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     fun resume() {
-        if (_sessionState.value == SessionState.Stopped && _currentMode.value == Mode.MUSICAL_CHAIRS) {
+        if (_sessionState.value == SessionState.Stopped) {
             adapter?.resume()
         }
     }

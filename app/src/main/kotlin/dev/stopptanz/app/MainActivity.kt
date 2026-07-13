@@ -212,11 +212,8 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings,
     } else {
         when (sessionState) {
             SessionState.Playing -> Button(onClick = { activeService.stop() }) { Text(stringResource(R.string.button_stop)) }
-            SessionState.Stopped -> if (activeSessionMode == Mode.MUSICAL_CHAIRS) {
+            SessionState.Stopped ->
                 Button(onClick = { activeService.resume() }) { Text(stringResource(R.string.button_resume)) }
-            } else {
-                Text(stringResource(R.string.status_stopped_resuming))
-            }
             SessionState.Finished -> {
                 Text(stringResource(R.string.label_finished), Modifier.padding(vertical = 4.dp))
                 Button(onClick = { activeService.acknowledgeFinished() }) { Text(stringResource(R.string.button_done)) }

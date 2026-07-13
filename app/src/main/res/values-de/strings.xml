@@ -27,7 +27,6 @@
     <string name="button_start_session">Sitzung starten</string>
     <string name="button_stop">Stopp</string>
     <string name="button_resume">Fortsetzen</string>
-    <string name="status_stopped_resuming">Gestoppt — wird automatisch fortgesetzt…</string>
     <string name="label_finished">Abgeschlossen</string>
     <string name="button_done">Fertig</string>
     <string name="button_end_session">Sitzung beenden</string>
@@ -49,6 +48,5 @@
     <string name="notification_channel_playback">Wiedergabe</string>
     <string name="notification_session_running">%1$s-Sitzung läuft</string>
     <string name="notification_session_stopped">%1$s-Sitzung gestoppt</string>
-    <string name="notification_stopped_resuming">%1$s gestoppt — wird automatisch fortgesetzt…</string>
     <string name="notification_session_finished">%1$s-Sitzung abgeschlossen</string>
 </resources>

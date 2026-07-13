@@ -44,10 +44,11 @@ class SessionEngineTest {
     }
 
     @Test
-    fun `freeze dance mode rejects manual resume`() {
+    fun `freeze dance mode allows manual resume from Stopped`() {
         val e = engine(Mode.FREEZE_DANCE)
         e.stop()
-        assertFailsWith<IllegalStateException> { e.resume() }
+        e.resume()
+        assertEquals(SessionState.Playing, e.state)
     }
 
     @Test

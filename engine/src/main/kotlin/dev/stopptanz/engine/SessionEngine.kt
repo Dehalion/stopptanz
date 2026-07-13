@@ -45,7 +45,6 @@ class SessionEngine(
 
     fun resume() {
         check(state is SessionState.Stopped) { "Cannot Resume from $state" }
-        check(mode == Mode.MUSICAL_CHAIRS) { "Manual Resume only applies in Musical Chairs mode" }
         state = SessionState.Playing
     }
 
