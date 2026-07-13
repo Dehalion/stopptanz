@@ -14,6 +14,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+private const val POSITION_POLL_INTERVAL_MILLIS = 500L
+
 /**
  * Thin glue layer wrapping ExoPlayer, driven by [SessionEngine] state.
  * Not a primary test target for v1 (spec: playback adapter is glue, not deep-tested).
@@ -24,9 +26,11 @@ class SessionPlaybackAdapter(
     private val scope: CoroutineScope,
     private val onStateChanged: (SessionState) -> Unit = {},
     private val onTrackChanged: (TrackStatus) -> Unit = {},
+    private val onPositionChanged: (PlaybackPosition) -> Unit = {},
 ) {
     private var autoResumeJob: Job? = null
     private var autoStopJob: Job? = null
+    private var positionTickerJob: Job? = null
 
     init {
         player.repeatMode = if (engine.playlist.loop) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF
@@ -34,6 +38,7 @@ class SessionPlaybackAdapter(
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED) {
                     autoStopJob?.cancel()
+                    stopPositionTicker()
                     engine.onPlaylistEnded()
                     onStateChanged(engine.state)
                 }
@@ -54,6 +59,7 @@ class SessionPlaybackAdapter(
         player.playWhenReady = true
         onStateChanged(engine.state)
         onTrackChanged(engine.trackStatus)
+        startPositionTicker()
         scheduleAutoStop()
     }
 
@@ -65,12 +71,14 @@ class SessionPlaybackAdapter(
     private fun performStop() {
         engine.stop()
         player.pause()
+        stopPositionTicker()
         onStateChanged(engine.state)
         if (engine.mode == Mode.FREEZE_DANCE) {
             autoResumeJob = scope.launch {
                 delay(engine.pauseDurationMillis)
                 engine.onPauseElapsed()
                 player.play()
+                startPositionTicker()
                 onStateChanged(engine.state)
                 scheduleAutoStop()
             }
@@ -81,8 +89,23 @@ class SessionPlaybackAdapter(
         autoResumeJob?.cancel()
         engine.resume()
         player.play()
+        startPositionTicker()
         onStateChanged(engine.state)
         scheduleAutoStop()
+    }
+
+    private fun startPositionTicker() {
+        positionTickerJob?.cancel()
+        positionTickerJob = scope.launch {
+            while (true) {
+                onPositionChanged(PlaybackPosition(player.currentPosition, player.duration.coerceAtLeast(0)))
+                delay(POSITION_POLL_INTERVAL_MILLIS)
+            }
+        }
+    }
+
+    private fun stopPositionTicker() {
+        positionTickerJob?.cancel()
     }
 
     fun setStopInterval(stopInterval: StopInterval) {
@@ -104,6 +127,7 @@ class SessionPlaybackAdapter(
     fun cancelJobs() {
         autoResumeJob?.cancel()
         autoStopJob?.cancel()
+        stopPositionTicker()
     }
 
     /** Stops playback and releases the held media/decoder resources; the player itself stays reusable for the next Session. */

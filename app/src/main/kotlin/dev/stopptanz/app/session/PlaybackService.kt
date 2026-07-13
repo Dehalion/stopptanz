@@ -62,6 +62,9 @@ class PlaybackService : MediaSessionService() {
     private val _trackStatus = MutableStateFlow<TrackStatus?>(null)
     val trackStatus: StateFlow<TrackStatus?> = _trackStatus
 
+    private val _playbackPosition = MutableStateFlow<PlaybackPosition?>(null)
+    val playbackPosition: StateFlow<PlaybackPosition?> = _playbackPosition
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
@@ -138,6 +141,7 @@ class PlaybackService : MediaSessionService() {
                 updateNotification()
             },
             onTrackChanged = { status -> _trackStatus.value = status },
+            onPositionChanged = { position -> _playbackPosition.value = position },
         ).also { it.start() }
 
         ServiceCompat.startForeground(
@@ -230,6 +234,7 @@ class PlaybackService : MediaSessionService() {
         _currentMode.value = null
         _sessionState.value = null
         _trackStatus.value = null
+        _playbackPosition.value = null
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }

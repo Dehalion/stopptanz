@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import dev.stopptanz.app.playlist.PlaylistRepository
 import dev.stopptanz.app.playlist.PlaylistSelectionState
 import dev.stopptanz.app.playlist.SelectionKind
+import dev.stopptanz.app.session.PlaybackPosition
 import dev.stopptanz.app.session.PlaybackService
 import dev.stopptanz.app.session.SessionSettings
 import dev.stopptanz.app.settings.SettingsRepository
@@ -138,6 +139,7 @@ private fun SessionSection(
 
     var sessionState by remember { mutableStateOf<SessionState?>(null) }
     var trackStatus by remember { mutableStateOf<TrackStatus?>(null) }
+    var playbackPosition by remember { mutableStateOf<PlaybackPosition?>(null) }
     var boundService by remember { mutableStateOf<PlaybackService?>(null) }
     var serviceConnection by remember { mutableStateOf<ServiceConnection?>(null) }
     var activeSessionMode by remember { mutableStateOf(Mode.FREEZE_DANCE) }
@@ -157,6 +159,7 @@ private fun SessionSection(
                 scope.launch { service.sessionState.collect { sessionState = it } }
                 scope.launch { service.currentMode.collect { it?.let { mode -> activeSessionMode = mode } } }
                 scope.launch { service.trackStatus.collect { trackStatus = it } }
+                scope.launch { service.playbackPosition.collect { playbackPosition = it } }
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
@@ -229,7 +232,7 @@ private fun SessionSection(
         }
 
         if (sessionState == SessionState.Playing || sessionState == SessionState.Stopped) {
-            trackStatus?.let { TrackStatusDisplay(it) }
+            trackStatus?.let { TrackStatusDisplay(it, playbackPosition) }
 
             PauseDurationControls(pauseDurationMillis) { millis ->
                 scope.launch { sessionSettings.setPauseDurationMillis(millis) }
@@ -286,7 +289,7 @@ private fun SessionSection(
 }
 
 @Composable
-private fun TrackStatusDisplay(trackStatus: TrackStatus) {
+private fun TrackStatusDisplay(trackStatus: TrackStatus, playbackPosition: PlaybackPosition?) {
     Text(stringResource(R.string.label_current_track, trackStatus.current.name), Modifier.padding(vertical = 4.dp))
     Text(
         trackStatus.next?.let { stringResource(R.string.label_next_track, it.name) }
@@ -294,6 +297,12 @@ private fun TrackStatusDisplay(trackStatus: TrackStatus) {
         Modifier.padding(vertical = 4.dp),
     )
     Text(trackStatus.remaining.displayText(), Modifier.padding(vertical = 4.dp))
+    playbackPosition?.let {
+        Text(
+            stringResource(R.string.label_track_duration, it.formatCurrent(), it.formatTotal()),
+            Modifier.padding(vertical = 4.dp),
+        )
+    }
 }
 
 @Composable
