@@ -6,7 +6,7 @@ sealed interface PlaylistSelectionState {
     object Loading : PlaylistSelectionState
     object NotSelected : PlaylistSelectionState
     object PickerCancelled : PlaylistSelectionState
-    data class PermissionUnavailable(val folderName: String?) : PlaylistSelectionState
-    data class Empty(val folderName: String) : PlaylistSelectionState
-    data class Selected(val folderName: String, val playlist: Playlist) : PlaylistSelectionState
+    data class PermissionUnavailable(val displayName: String?, val kind: SelectionKind) : PlaylistSelectionState
+    data class Empty(val displayName: String, val kind: SelectionKind) : PlaylistSelectionState
+    data class Selected(val displayName: String, val playlist: Playlist, val kind: SelectionKind) : PlaylistSelectionState
 }

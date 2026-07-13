@@ -40,6 +40,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.stopptanz.app.playlist.PlaylistRepository
 import dev.stopptanz.app.playlist.PlaylistSelectionState
+import dev.stopptanz.app.playlist.SelectionKind
 import dev.stopptanz.app.session.PlaybackService
 import dev.stopptanz.app.session.SessionSettings
 import dev.stopptanz.app.settings.SettingsRepository
@@ -75,6 +76,14 @@ fun StopptanzApp(playlistRepository: PlaylistRepository, sessionSettings: Sessio
         }
     }
 
+    val pickTrack = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) {
+            state = PlaylistSelectionState.PickerCancelled
+        } else {
+            scope.launch { state = playlistRepository.selectTrack(uri) }
+        }
+    }
+
     LaunchedEffect(Unit) {
         state = playlistRepository.loadPersistedSelection()
     }
@@ -91,10 +100,18 @@ fun StopptanzApp(playlistRepository: PlaylistRepository, sessionSettings: Sessio
 
                     val selected = state as? PlaylistSelectionState.Selected
                     if (selected != null) {
-                        SessionSection(selected.playlist, sessionSettings, onPickFolder = { pickFolder.launch(null) })
+                        SessionSection(
+                            selected.playlist,
+                            sessionSettings,
+                            onPickFolder = { pickFolder.launch(null) },
+                            onPickTrack = { pickTrack.launch(arrayOf("audio/*")) },
+                        )
                     } else {
                         Button(onClick = { pickFolder.launch(null) }) {
                             Text(stringResource(R.string.pick_music_folder))
+                        }
+                        Button(onClick = { pickTrack.launch(arrayOf("audio/*")) }) {
+                            Text(stringResource(R.string.pick_track))
                         }
                     }
                 }
@@ -104,7 +121,12 @@ fun StopptanzApp(playlistRepository: PlaylistRepository, sessionSettings: Sessio
 }
 
 @Composable
-private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings, onPickFolder: () -> Unit) {
+private fun SessionSection(
+    playlist: Playlist,
+    sessionSettings: SessionSettings,
+    onPickFolder: () -> Unit,
+    onPickTrack: () -> Unit,
+) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val pauseDurationMillis by sessionSettings.pauseDurationMillisFlow().collectAsState(initial = 5_000)
@@ -156,6 +178,9 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings,
     if (activeService == null || sessionState == null) {
         Button(onClick = onPickFolder) {
             Text(stringResource(R.string.pick_music_folder))
+        }
+        Button(onClick = onPickTrack) {
+            Text(stringResource(R.string.pick_track))
         }
 
         Text(stringResource(R.string.label_mode, mode.label()), Modifier.padding(vertical = 4.dp))
@@ -322,18 +347,27 @@ private fun Mode.label(): String = when (this) {
 @Composable
 private fun PlaylistSelectionState.statusText(): String = when (this) {
     PlaylistSelectionState.Loading -> stringResource(R.string.status_loading)
-    PlaylistSelectionState.NotSelected -> stringResource(R.string.status_no_folder_selected)
-    PlaylistSelectionState.PickerCancelled -> stringResource(R.string.status_folder_access_needed)
-    is PlaylistSelectionState.PermissionUnavailable -> if (folderName != null) {
-        stringResource(R.string.status_folder_inaccessible, folderName)
+    PlaylistSelectionState.NotSelected -> stringResource(R.string.status_no_selection)
+    PlaylistSelectionState.PickerCancelled -> stringResource(R.string.status_access_needed)
+    is PlaylistSelectionState.PermissionUnavailable -> if (displayName != null) {
+        when (kind) {
+            SelectionKind.FOLDER -> stringResource(R.string.status_folder_inaccessible, displayName)
+            SelectionKind.TRACK -> stringResource(R.string.status_track_inaccessible, displayName)
+        }
     } else {
-        stringResource(R.string.status_folder_access_needed)
+        stringResource(R.string.status_access_needed)
     }
-    is PlaylistSelectionState.Empty -> stringResource(R.string.status_folder_empty, folderName)
-    is PlaylistSelectionState.Selected -> pluralStringResource(
-        R.plurals.status_folder_selected,
-        playlist.tracks.size,
-        folderName,
-        playlist.tracks.size,
-    )
+    is PlaylistSelectionState.Empty -> when (kind) {
+        SelectionKind.FOLDER -> stringResource(R.string.status_folder_empty, displayName)
+        SelectionKind.TRACK -> stringResource(R.string.status_track_empty, displayName)
+    }
+    is PlaylistSelectionState.Selected -> when (kind) {
+        SelectionKind.FOLDER -> pluralStringResource(
+            R.plurals.status_folder_selected,
+            playlist.tracks.size,
+            displayName,
+            playlist.tracks.size,
+        )
+        SelectionKind.TRACK -> stringResource(R.string.status_track_selected, displayName)
+    }
 }
