@@ -101,6 +101,8 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings)
     val mode by sessionSettings.modeFlow().collectAsState(initial = Mode.FREEZE_DANCE)
     val stopIntervalMinMillis by sessionSettings.stopIntervalMinMillisFlow().collectAsState(initial = 5_000)
     val stopIntervalMaxMillis by sessionSettings.stopIntervalMaxMillisFlow().collectAsState(initial = 15_000)
+    val shuffle by sessionSettings.shuffleFlow().collectAsState(initial = false)
+    val loop by sessionSettings.loopFlow().collectAsState(initial = false)
 
     var sessionState by remember { mutableStateOf<SessionState>(SessionState.Playing) }
     var adapter by remember { mutableStateOf<SessionPlaybackAdapter?>(null) }
@@ -142,9 +144,16 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings)
             }
         }) { Text("Max +1s") }
 
+        Text("Shuffle: ${if (shuffle) "On" else "Off"}", Modifier.padding(vertical = 4.dp))
+        Button(onClick = { scope.launch { sessionSettings.setShuffle(!shuffle) } }) { Text("Toggle Shuffle") }
+
+        Text("Loop: ${if (loop) "On" else "Off"}", Modifier.padding(vertical = 4.dp))
+        Button(onClick = { scope.launch { sessionSettings.setLoop(!loop) } }) { Text("Toggle Loop") }
+
         Button(onClick = {
             activeSessionMode = mode
-            adapter = startSession(context, scope, playlist, mode, pauseDurationMillis, stopIntervalMinMillis, stopIntervalMaxMillis) { sessionState = it }
+            val sessionPlaylist = playlist.copy(shuffle = shuffle, loop = loop)
+            adapter = startSession(context, scope, sessionPlaylist, mode, pauseDurationMillis, stopIntervalMinMillis, stopIntervalMaxMillis) { sessionState = it }
         }) {
             Text("Start Session")
         }
@@ -156,7 +165,13 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings)
             } else {
                 Text("Stopped — resuming automatically…")
             }
-            SessionState.Finished -> Text("Finished")
+            SessionState.Finished -> {
+                Text("Finished", Modifier.padding(vertical = 4.dp))
+                Button(onClick = {
+                    activeAdapter.release()
+                    adapter = null
+                }) { Text("Done") }
+            }
         }
     }
 
@@ -187,7 +202,7 @@ private fun startSession(
         scope = scope,
         onStateChanged = onStateChanged,
     )
-    adapter.start(playlist)
+    adapter.start()
     onStateChanged(engine.state)
     return adapter
 }

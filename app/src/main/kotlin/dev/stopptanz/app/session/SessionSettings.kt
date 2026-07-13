@@ -13,6 +13,8 @@ private const val KEY_STOP_INTERVAL_MIN_MILLIS = "stop_interval_min_millis"
 private const val DEFAULT_STOP_INTERVAL_MIN_MILLIS = 5_000
 private const val KEY_STOP_INTERVAL_MAX_MILLIS = "stop_interval_max_millis"
 private const val DEFAULT_STOP_INTERVAL_MAX_MILLIS = 15_000
+private const val KEY_SHUFFLE = "shuffle"
+private const val KEY_LOOP = "loop"
 
 class SessionSettings(private val settings: SettingsRepository) {
 
@@ -42,5 +44,17 @@ class SessionSettings(private val settings: SettingsRepository) {
 
     suspend fun setStopIntervalMaxMillis(value: Int) {
         settings.setInt(KEY_STOP_INTERVAL_MAX_MILLIS, value)
+    }
+
+    fun shuffleFlow(): Flow<Boolean> = settings.booleanFlow(KEY_SHUFFLE, false)
+
+    suspend fun setShuffle(value: Boolean) {
+        settings.setBoolean(KEY_SHUFFLE, value)
+    }
+
+    fun loopFlow(): Flow<Boolean> = settings.booleanFlow(KEY_LOOP, false)
+
+    suspend fun setLoop(value: Boolean) {
+        settings.setBoolean(KEY_LOOP, value)
     }
 }

@@ -2,9 +2,9 @@ package dev.stopptanz.app.session
 
 import android.net.Uri
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import dev.stopptanz.engine.Mode
-import dev.stopptanz.engine.Playlist
 import dev.stopptanz.engine.SessionEngine
 import dev.stopptanz.engine.SessionState
 import kotlinx.coroutines.CoroutineScope
@@ -25,8 +25,21 @@ class SessionPlaybackAdapter(
     private var autoResumeJob: Job? = null
     private var autoStopJob: Job? = null
 
-    fun start(playlist: Playlist) {
-        player.setMediaItems(playlist.tracks.map { MediaItem.fromUri(Uri.parse(it)) })
+    init {
+        player.repeatMode = if (engine.playlist.loop) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF
+        player.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED) {
+                    autoStopJob?.cancel()
+                    engine.onPlaylistEnded()
+                    onStateChanged(engine.state)
+                }
+            }
+        })
+    }
+
+    fun start() {
+        player.setMediaItems(engine.orderedTracks.map { MediaItem.fromUri(Uri.parse(it)) })
         player.prepare()
         player.playWhenReady = true
         onStateChanged(engine.state)

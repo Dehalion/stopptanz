@@ -12,12 +12,14 @@ class SessionEngineTest {
         minMillis: Long = 5_000,
         maxMillis: Long = 15_000,
         pauseDurationMillis: Long = 5_000,
+        playlist: Playlist = Playlist(tracks = listOf("track1.mp3", "track2.mp3")),
+        randomSource: RandomSource = RandomSource { min, max -> min + (max - min) / 2 },
     ) = SessionEngine(
-        playlist = Playlist(tracks = listOf("track1.mp3", "track2.mp3")),
+        playlist = playlist,
         mode = mode,
         stopInterval = StopInterval(minMillis, maxMillis),
         pauseDurationMillis = pauseDurationMillis,
-        randomSource = RandomSource { min, max -> min + (max - min) / 2 },
+        randomSource = randomSource,
     )
 
     @Test
@@ -73,5 +75,45 @@ class SessionEngineTest {
     fun `pauseDurationMillis is exposed for adapter scheduling`() {
         val e = engine(Mode.FREEZE_DANCE, pauseDurationMillis = 7_000)
         assertEquals(7_000, e.pauseDurationMillis)
+    }
+
+    @Test
+    fun `orderedTracks preserves playlist order when shuffle is off`() {
+        val playlist = Playlist(tracks = listOf("a.mp3", "b.mp3", "c.mp3"), shuffle = false)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        assertEquals(listOf("a.mp3", "b.mp3", "c.mp3"), e.orderedTracks)
+    }
+
+    @Test
+    fun `orderedTracks is a seeded permutation when shuffle is on`() {
+        val playlist = Playlist(tracks = listOf("a.mp3", "b.mp3", "c.mp3", "d.mp3"), shuffle = true)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist, randomSource = RandomSource { min, _ -> min })
+        assertEquals(listOf("b.mp3", "c.mp3", "d.mp3", "a.mp3"), e.orderedTracks)
+    }
+
+    @Test
+    fun `onPlaylistEnded transitions to Finished when loop is off`() {
+        val playlist = Playlist(tracks = listOf("a.mp3"), loop = false)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        e.onPlaylistEnded()
+        assertEquals(SessionState.Finished, e.state)
+    }
+
+    @Test
+    fun `onPlaylistEnded stays Playing when loop is on`() {
+        val playlist = Playlist(tracks = listOf("a.mp3"), loop = true)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        e.onPlaylistEnded()
+        assertEquals(SessionState.Playing, e.state)
+    }
+
+    @Test
+    fun `Finished state rejects Stop, Resume, and onPauseElapsed`() {
+        val playlist = Playlist(tracks = listOf("a.mp3"), loop = false)
+        val e = engine(Mode.MUSICAL_CHAIRS, playlist = playlist)
+        e.onPlaylistEnded()
+        assertFailsWith<IllegalStateException> { e.stop() }
+        assertFailsWith<IllegalStateException> { e.resume() }
+        assertFailsWith<IllegalStateException> { e.onPauseElapsed() }
     }
 }
