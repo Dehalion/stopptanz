@@ -6,14 +6,16 @@ import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Binder
-import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
+import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.media3.session.MediaSession
+import androidx.media3.session.MediaStyleNotificationHelper
+import androidx.media3.session.SessionResult
 import dev.stopptanz.engine.Mode
 import dev.stopptanz.engine.Playlist
 import dev.stopptanz.engine.SessionEngine
@@ -45,8 +47,11 @@ class PlaybackService : MediaSessionService() {
     private val serviceScope = CoroutineScope(serviceJob + Dispatchers.Main)
 
     private lateinit var player: ExoPlayer
+    private lateinit var routedPlayer: ForwardingPlayer
     private lateinit var mediaSession: MediaSession
     private var adapter: SessionPlaybackAdapter? = null
+    private var currentMode: Mode? = null
+    private val routedPlayerListeners = mutableListOf<Player.Listener>()
 
     private val _sessionState = MutableStateFlow<SessionState?>(null)
     val sessionState: StateFlow<SessionState?> = _sessionState
@@ -55,22 +60,80 @@ class PlaybackService : MediaSessionService() {
         super.onCreate()
         createNotificationChannel()
         player = ExoPlayer.Builder(this).build()
-        mediaSession = MediaSession.Builder(this, player)
+        // The system-rendered lock screen/notification Play-Pause control operates on the
+        // MediaSession's player, not the notification's own actions. Routing it through
+        // stop()/resume() (rather than the wrapped player's raw play()/pause()) keeps every
+        // Stop/Resume in sync with SessionEngine, exactly like the in-app button.
+        routedPlayer = object : ForwardingPlayer(player) {
+            override fun play() {
+                resume()
+            }
+
+            override fun pause() {
+                stop()
+            }
+
+            // The raw transport COMMAND_STOP (distinct from our Stop/Resume business logic)
+            // must never reach the real ExoPlayer from an external controller — it clears
+            // the player down to STATE_IDLE, permanently desyncing it from SessionEngine.
+            // COMMAND_STOP is also stripped from available player commands below as
+            // defense-in-depth, but override it here too in case any bridge calls it directly.
+            override fun stop() = Unit
+
+            // Freeze Dance auto-resumes on its own — while Stopped in that mode, hide the
+            // Play affordance entirely rather than showing a control that silently no-ops,
+            // so the system UI matches the in-app button (which shows no Resume control here).
+            override fun getAvailableCommands(): Player.Commands {
+                val commands = super.getAvailableCommands()
+                return if (currentMode == Mode.FREEZE_DANCE && _sessionState.value == SessionState.Stopped) {
+                    commands.buildUpon().remove(Player.COMMAND_PLAY_PAUSE).build()
+                } else {
+                    commands
+                }
+            }
+
+            // Track listeners ourselves (rather than only forwarding to the real ExoPlayer)
+            // so refreshAvailableCommands() can notify the system UI when our synthetic
+            // Freeze Dance gating above changes, independent of the real player's own events.
+            override fun addListener(listener: Player.Listener) {
+                routedPlayerListeners += listener
+                super.addListener(listener)
+            }
+
+            override fun removeListener(listener: Player.Listener) {
+                routedPlayerListeners -= listener
+                super.removeListener(listener)
+            }
+        }
+        mediaSession = MediaSession.Builder(this, routedPlayer)
             .setCallback(object : MediaSession.Callback {
-                // Interactive transport controls are #11's job (MediaSession lock-screen
-                // controls); a default Play/Pause here would bypass SessionEngine and
-                // desync engine state from the player.
                 override fun onConnect(
                     session: MediaSession,
                     controller: MediaSession.ControllerInfo,
                 ): MediaSession.ConnectionResult {
                     val playerCommands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
-                        .remove(Player.COMMAND_PLAY_PAUSE)
+                        .remove(Player.COMMAND_STOP)
+                        .remove(Player.COMMAND_SEEK_TO_NEXT)
+                        .remove(Player.COMMAND_SEEK_TO_PREVIOUS)
                         .build()
                     return MediaSession.ConnectionResult.accept(
                         MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS,
                         playerCommands,
                     )
+                }
+
+                // Freeze Dance auto-resumes on its own after its pause duration — a manual
+                // lock-screen tap must not be able to resume it early, matching the in-app UI
+                // which shows no Resume button for Freeze Dance while Stopped.
+                override fun onPlayerCommandRequest(
+                    session: MediaSession,
+                    controller: MediaSession.ControllerInfo,
+                    playerCommand: Int,
+                ): Int {
+                    val blockManualResume = playerCommand == Player.COMMAND_PLAY_PAUSE &&
+                        currentMode == Mode.FREEZE_DANCE &&
+                        _sessionState.value == SessionState.Stopped
+                    return if (blockManualResume) SessionResult.RESULT_ERROR_NOT_SUPPORTED else SessionResult.RESULT_SUCCESS
                 }
             })
             .build()
@@ -91,6 +154,7 @@ class PlaybackService : MediaSessionService() {
         stopIntervalMaxMillis: Int,
     ) {
         adapter?.cancelJobs()
+        currentMode = mode
         val engine = SessionEngine(
             playlist = playlist,
             mode = mode,
@@ -101,27 +165,53 @@ class PlaybackService : MediaSessionService() {
             player = player,
             engine = engine,
             scope = serviceScope,
-            onStateChanged = { _sessionState.value = it },
+            onStateChanged = { state ->
+                _sessionState.value = state
+                updateNotification()
+                refreshAvailableCommands()
+            },
         ).also { it.start() }
 
         ServiceCompat.startForeground(
             this,
             NOTIFICATION_ID,
-            buildNotification(mode),
+            buildNotification(mode, _sessionState.value),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK,
         )
     }
 
-    private fun buildNotification(mode: Mode): Notification {
+    private fun refreshAvailableCommands() {
+        val commands = routedPlayer.availableCommands
+        routedPlayerListeners.toList().forEach { it.onAvailableCommandsChanged(commands) }
+    }
+
+    private fun updateNotification() {
+        val mode = currentMode ?: return
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.notify(NOTIFICATION_ID, buildNotification(mode, _sessionState.value))
+    }
+
+    private fun buildNotification(mode: Mode, state: SessionState?): Notification {
         val modeLabel = when (mode) {
             Mode.FREEZE_DANCE -> "Freeze Dance"
             Mode.MUSICAL_CHAIRS -> "Musical Chairs"
         }
+        val statusText = when (state) {
+            SessionState.Playing -> "$modeLabel Session running"
+            SessionState.Stopped -> if (mode == Mode.MUSICAL_CHAIRS) {
+                "$modeLabel Session stopped"
+            } else {
+                "$modeLabel Stopped — resuming automatically…"
+            }
+            SessionState.Finished -> "$modeLabel Session finished"
+            null -> "$modeLabel Session running"
+        }
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle("Stopptanz")
-            .setContentText("$modeLabel Session running")
+            .setContentText(statusText)
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setOngoing(true)
+            .setStyle(MediaStyleNotificationHelper.MediaStyle(mediaSession))
             .build()
     }
 
@@ -135,18 +225,29 @@ class PlaybackService : MediaSessionService() {
         manager.createNotificationChannel(channel)
     }
 
+    // Guarded against invalid-state calls: SessionEngine.stop()/resume() throw when called
+    // outside their expected state (Playing/Stopped) or Mode (Musical Chairs manual resume
+    // only). The in-app button never hits this because Compose only renders the button
+    // matching the current state, but the system lock-screen/notification Play-Pause control
+    // can dispatch a stale/racy command (e.g. rapid double-tap) that the in-app button never
+    // could, which previously crashed the whole process.
     fun stop() {
-        adapter?.stop()
+        if (_sessionState.value == SessionState.Playing) {
+            adapter?.stop()
+        }
     }
 
     fun resume() {
-        adapter?.resume()
+        if (_sessionState.value == SessionState.Stopped && currentMode == Mode.MUSICAL_CHAIRS) {
+            adapter?.resume()
+        }
     }
 
     /** Session acknowledged Finished (host tapped Done) — tear down and give up the foreground notification. */
     fun acknowledgeFinished() {
         adapter?.cancelJobs()
         adapter = null
+        currentMode = null
         _sessionState.value = null
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
