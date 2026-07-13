@@ -9,6 +9,10 @@ private const val KEY_PAUSE_DURATION_MILLIS = "pause_duration_millis"
 private const val DEFAULT_PAUSE_DURATION_MILLIS = 5_000
 private const val KEY_MODE = "mode"
 private val DEFAULT_MODE = Mode.FREEZE_DANCE
+private const val KEY_STOP_INTERVAL_MIN_MILLIS = "stop_interval_min_millis"
+private const val DEFAULT_STOP_INTERVAL_MIN_MILLIS = 5_000
+private const val KEY_STOP_INTERVAL_MAX_MILLIS = "stop_interval_max_millis"
+private const val DEFAULT_STOP_INTERVAL_MAX_MILLIS = 15_000
 
 class SessionSettings(private val settings: SettingsRepository) {
 
@@ -24,5 +28,19 @@ class SessionSettings(private val settings: SettingsRepository) {
 
     suspend fun setMode(mode: Mode) {
         settings.setString(KEY_MODE, mode.name)
+    }
+
+    fun stopIntervalMinMillisFlow(): Flow<Int> =
+        settings.intFlow(KEY_STOP_INTERVAL_MIN_MILLIS, DEFAULT_STOP_INTERVAL_MIN_MILLIS)
+
+    suspend fun setStopIntervalMinMillis(value: Int) {
+        settings.setInt(KEY_STOP_INTERVAL_MIN_MILLIS, value)
+    }
+
+    fun stopIntervalMaxMillisFlow(): Flow<Int> =
+        settings.intFlow(KEY_STOP_INTERVAL_MAX_MILLIS, DEFAULT_STOP_INTERVAL_MAX_MILLIS)
+
+    suspend fun setStopIntervalMaxMillis(value: Int) {
+        settings.setInt(KEY_STOP_INTERVAL_MAX_MILLIS, value)
     }
 }

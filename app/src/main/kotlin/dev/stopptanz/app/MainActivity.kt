@@ -99,6 +99,8 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings)
     val context = LocalContext.current
     val pauseDurationMillis by sessionSettings.pauseDurationMillisFlow().collectAsState(initial = 5_000)
     val mode by sessionSettings.modeFlow().collectAsState(initial = Mode.FREEZE_DANCE)
+    val stopIntervalMinMillis by sessionSettings.stopIntervalMinMillisFlow().collectAsState(initial = 5_000)
+    val stopIntervalMaxMillis by sessionSettings.stopIntervalMaxMillisFlow().collectAsState(initial = 15_000)
 
     var sessionState by remember { mutableStateOf<SessionState>(SessionState.Playing) }
     var adapter by remember { mutableStateOf<SessionPlaybackAdapter?>(null) }
@@ -118,9 +120,31 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings)
             scope.launch { sessionSettings.setPauseDurationMillis((pauseDurationMillis + 1_000).coerceIn(1_000, 30_000)) }
         }) { Text("+1s") }
 
+        Text("Stop Interval: ${stopIntervalMinMillis / 1000}s–${stopIntervalMaxMillis / 1000}s", Modifier.padding(vertical = 4.dp))
+        Button(onClick = {
+            scope.launch {
+                sessionSettings.setStopIntervalMinMillis((stopIntervalMinMillis - 1_000).coerceIn(1_000, stopIntervalMaxMillis - 1_000))
+            }
+        }) { Text("Min -1s") }
+        Button(onClick = {
+            scope.launch {
+                sessionSettings.setStopIntervalMinMillis((stopIntervalMinMillis + 1_000).coerceIn(1_000, stopIntervalMaxMillis - 1_000))
+            }
+        }) { Text("Min +1s") }
+        Button(onClick = {
+            scope.launch {
+                sessionSettings.setStopIntervalMaxMillis((stopIntervalMaxMillis - 1_000).coerceIn(stopIntervalMinMillis + 1_000, 60_000))
+            }
+        }) { Text("Max -1s") }
+        Button(onClick = {
+            scope.launch {
+                sessionSettings.setStopIntervalMaxMillis((stopIntervalMaxMillis + 1_000).coerceIn(stopIntervalMinMillis + 1_000, 60_000))
+            }
+        }) { Text("Max +1s") }
+
         Button(onClick = {
             activeSessionMode = mode
-            adapter = startSession(context, scope, playlist, mode, pauseDurationMillis) { sessionState = it }
+            adapter = startSession(context, scope, playlist, mode, pauseDurationMillis, stopIntervalMinMillis, stopIntervalMaxMillis) { sessionState = it }
         }) {
             Text("Start Session")
         }
@@ -141,19 +165,20 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings)
     }
 }
 
-/** Auto-timer (#8) isn't wired up yet, so Stop Interval is unused. */
 private fun startSession(
     context: Context,
     scope: CoroutineScope,
     playlist: Playlist,
     mode: Mode,
     pauseDurationMillis: Int,
+    stopIntervalMinMillis: Int,
+    stopIntervalMaxMillis: Int,
     onStateChanged: (SessionState) -> Unit,
 ): SessionPlaybackAdapter {
     val engine = SessionEngine(
         playlist = playlist,
         mode = mode,
-        stopInterval = StopInterval.unused,
+        stopInterval = StopInterval(stopIntervalMinMillis.toLong(), stopIntervalMaxMillis.toLong()),
         pauseDurationMillis = pauseDurationMillis.toLong(),
     )
     val adapter = SessionPlaybackAdapter(

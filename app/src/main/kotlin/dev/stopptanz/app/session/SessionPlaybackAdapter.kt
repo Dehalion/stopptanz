@@ -23,15 +23,22 @@ class SessionPlaybackAdapter(
     private val onStateChanged: (SessionState) -> Unit = {},
 ) {
     private var autoResumeJob: Job? = null
+    private var autoStopJob: Job? = null
 
     fun start(playlist: Playlist) {
         player.setMediaItems(playlist.tracks.map { MediaItem.fromUri(Uri.parse(it)) })
         player.prepare()
         player.playWhenReady = true
         onStateChanged(engine.state)
+        scheduleAutoStop()
     }
 
     fun stop() {
+        autoStopJob?.cancel()
+        performStop()
+    }
+
+    private fun performStop() {
         engine.stop()
         player.pause()
         onStateChanged(engine.state)
@@ -41,6 +48,7 @@ class SessionPlaybackAdapter(
                 engine.onPauseElapsed()
                 player.play()
                 onStateChanged(engine.state)
+                scheduleAutoStop()
             }
         }
     }
@@ -49,10 +57,19 @@ class SessionPlaybackAdapter(
         engine.resume()
         player.play()
         onStateChanged(engine.state)
+        scheduleAutoStop()
+    }
+
+    private fun scheduleAutoStop() {
+        autoStopJob = scope.launch {
+            delay(engine.nextStopDelayMillis())
+            performStop()
+        }
     }
 
     fun release() {
         autoResumeJob?.cancel()
+        autoStopJob?.cancel()
         player.release()
     }
 }
