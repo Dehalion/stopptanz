@@ -84,13 +84,14 @@ fun StopptanzApp(playlistRepository: PlaylistRepository, sessionSettings: Sessio
                 ) {
                     Text(stringResource(R.string.app_name))
                     Text(state.statusText(), Modifier.padding(vertical = 8.dp))
-                    Button(onClick = { pickFolder.launch(null) }) {
-                        Text(stringResource(R.string.pick_music_folder))
-                    }
 
                     val selected = state as? PlaylistSelectionState.Selected
                     if (selected != null) {
-                        SessionSection(selected.playlist, sessionSettings)
+                        SessionSection(selected.playlist, sessionSettings, onPickFolder = { pickFolder.launch(null) })
+                    } else {
+                        Button(onClick = { pickFolder.launch(null) }) {
+                            Text(stringResource(R.string.pick_music_folder))
+                        }
                     }
                 }
             }
@@ -99,7 +100,7 @@ fun StopptanzApp(playlistRepository: PlaylistRepository, sessionSettings: Sessio
 }
 
 @Composable
-private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings) {
+private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings, onPickFolder: () -> Unit) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val pauseDurationMillis by sessionSettings.pauseDurationMillisFlow().collectAsState(initial = 5_000)
@@ -146,6 +147,10 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings)
 
     val activeService = boundService
     if (activeService == null || sessionState == null) {
+        Button(onClick = onPickFolder) {
+            Text(stringResource(R.string.pick_music_folder))
+        }
+
         Text(stringResource(R.string.label_mode, mode.label()), Modifier.padding(vertical = 4.dp))
         Button(onClick = { scope.launch { sessionSettings.setMode(Mode.FREEZE_DANCE) } }) { Text(stringResource(R.string.mode_freeze_dance)) }
         Button(onClick = { scope.launch { sessionSettings.setMode(Mode.MUSICAL_CHAIRS) } }) { Text(stringResource(R.string.mode_musical_chairs)) }
