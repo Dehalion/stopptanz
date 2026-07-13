@@ -1,7 +1,12 @@
 package dev.stopptanz.app
 
+import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
+import android.os.Build
 import android.os.Bundle
+import android.os.IBinder
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -27,18 +32,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.media3.exoplayer.ExoPlayer
+import androidx.core.content.ContextCompat
 import dev.stopptanz.app.playlist.PlaylistRepository
 import dev.stopptanz.app.playlist.PlaylistSelectionState
-import dev.stopptanz.app.session.SessionPlaybackAdapter
+import dev.stopptanz.app.session.PlaybackService
 import dev.stopptanz.app.session.SessionSettings
 import dev.stopptanz.app.settings.SettingsRepository
 import dev.stopptanz.engine.Mode
 import dev.stopptanz.engine.Playlist
-import dev.stopptanz.engine.SessionEngine
 import dev.stopptanz.engine.SessionState
-import dev.stopptanz.engine.StopInterval
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -104,12 +106,17 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings)
     val shuffle by sessionSettings.shuffleFlow().collectAsState(initial = false)
     val loop by sessionSettings.loopFlow().collectAsState(initial = false)
 
-    var sessionState by remember { mutableStateOf<SessionState>(SessionState.Playing) }
-    var adapter by remember { mutableStateOf<SessionPlaybackAdapter?>(null) }
+    var sessionState by remember { mutableStateOf<SessionState?>(null) }
+    var boundService by remember { mutableStateOf<PlaybackService?>(null) }
+    var serviceConnection by remember { mutableStateOf<ServiceConnection?>(null) }
     var activeSessionMode by remember { mutableStateOf(Mode.FREEZE_DANCE) }
 
-    val activeAdapter = adapter
-    if (activeAdapter == null) {
+    val requestNotificationPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { /* no-op: absence just means no visible notification, FGS still runs */ }
+
+    val activeService = boundService
+    if (activeService == null || sessionState == null) {
         Text("Mode: ${mode.label()}", Modifier.padding(vertical = 4.dp))
         Button(onClick = { scope.launch { sessionSettings.setMode(Mode.FREEZE_DANCE) } }) { Text("Freeze Dance") }
         Button(onClick = { scope.launch { sessionSettings.setMode(Mode.MUSICAL_CHAIRS) } }) { Text("Musical Chairs") }
@@ -150,61 +157,61 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings)
         Text("Loop: ${if (loop) "On" else "Off"}", Modifier.padding(vertical = 4.dp))
         Button(onClick = { scope.launch { sessionSettings.setLoop(!loop) } }) { Text("Toggle Loop") }
 
-        Button(onClick = {
+        Button(onClick = onClick@{
+            if (serviceConnection != null) return@onClick
             activeSessionMode = mode
             val sessionPlaylist = playlist.copy(shuffle = shuffle, loop = loop)
-            adapter = startSession(context, scope, sessionPlaylist, mode, pauseDurationMillis, stopIntervalMinMillis, stopIntervalMaxMillis) { sessionState = it }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                requestNotificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+            val connection = object : ServiceConnection {
+                override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+                    val service = (binder as PlaybackService.LocalBinder).service
+                    boundService = service
+                    service.startSession(sessionPlaylist, mode, pauseDurationMillis, stopIntervalMinMillis, stopIntervalMaxMillis)
+                    scope.launch {
+                        service.sessionState.collect { sessionState = it }
+                    }
+                }
+
+                override fun onServiceDisconnected(name: ComponentName?) {
+                    boundService = null
+                    serviceConnection = null
+                }
+            }
+            serviceConnection = connection
+            val intent = Intent(context, PlaybackService::class.java)
+            ContextCompat.startForegroundService(context, intent)
+            context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
         }) {
             Text("Start Session")
         }
     } else {
         when (sessionState) {
-            SessionState.Playing -> Button(onClick = { activeAdapter.stop() }) { Text("Stop") }
+            SessionState.Playing -> Button(onClick = { activeService.stop() }) { Text("Stop") }
             SessionState.Stopped -> if (activeSessionMode == Mode.MUSICAL_CHAIRS) {
-                Button(onClick = { activeAdapter.resume() }) { Text("Resume") }
+                Button(onClick = { activeService.resume() }) { Text("Resume") }
             } else {
                 Text("Stopped — resuming automatically…")
             }
             SessionState.Finished -> {
                 Text("Finished", Modifier.padding(vertical = 4.dp))
                 Button(onClick = {
-                    activeAdapter.release()
-                    adapter = null
+                    activeService.acknowledgeFinished()
+                    serviceConnection?.let { context.unbindService(it) }
+                    boundService = null
+                    serviceConnection = null
                 }) { Text("Done") }
             }
+            null -> Unit
         }
     }
 
     DisposableEffect(Unit) {
-        onDispose { adapter?.release() }
+        onDispose {
+            serviceConnection?.let { context.unbindService(it) }
+        }
     }
-}
-
-private fun startSession(
-    context: Context,
-    scope: CoroutineScope,
-    playlist: Playlist,
-    mode: Mode,
-    pauseDurationMillis: Int,
-    stopIntervalMinMillis: Int,
-    stopIntervalMaxMillis: Int,
-    onStateChanged: (SessionState) -> Unit,
-): SessionPlaybackAdapter {
-    val engine = SessionEngine(
-        playlist = playlist,
-        mode = mode,
-        stopInterval = StopInterval(stopIntervalMinMillis.toLong(), stopIntervalMaxMillis.toLong()),
-        pauseDurationMillis = pauseDurationMillis.toLong(),
-    )
-    val adapter = SessionPlaybackAdapter(
-        player = ExoPlayer.Builder(context).build(),
-        engine = engine,
-        scope = scope,
-        onStateChanged = onStateChanged,
-    )
-    adapter.start()
-    onStateChanged(engine.state)
-    return adapter
 }
 
 private fun Mode.label(): String = when (this) {

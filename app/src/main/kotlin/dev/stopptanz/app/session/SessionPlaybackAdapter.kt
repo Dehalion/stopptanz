@@ -80,9 +80,14 @@ class SessionPlaybackAdapter(
         }
     }
 
-    fun release() {
+    /** Cancels pending auto-Stop/auto-resume timers without releasing the player. */
+    fun cancelJobs() {
         autoResumeJob?.cancel()
         autoStopJob?.cancel()
+    }
+
+    fun release() {
+        cancelJobs()
         player.release()
     }
 }
