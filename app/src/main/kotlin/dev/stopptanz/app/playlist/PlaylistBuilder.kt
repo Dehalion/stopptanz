@@ -1,6 +1,7 @@
 package dev.stopptanz.app.playlist
 
 import dev.stopptanz.engine.Playlist
+import dev.stopptanz.engine.Track
 
 data class ScannedFile(
     val uriString: String,
@@ -21,7 +22,9 @@ object PlaylistBuilder {
     }
 
     fun build(files: List<ScannedFile>): Playlist? {
-        val tracks = files.filter(::isAudioFile).map { it.uriString }
+        val tracks = files.filter(::isAudioFile).map {
+            Track(uri = it.uriString, name = it.displayName.substringBeforeLast('.', it.displayName))
+        }
         return if (tracks.isEmpty()) null else Playlist(tracks = tracks)
     }
 }

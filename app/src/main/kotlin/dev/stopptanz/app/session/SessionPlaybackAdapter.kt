@@ -8,6 +8,7 @@ import dev.stopptanz.engine.Mode
 import dev.stopptanz.engine.SessionEngine
 import dev.stopptanz.engine.SessionState
 import dev.stopptanz.engine.StopInterval
+import dev.stopptanz.engine.TrackStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -22,6 +23,7 @@ class SessionPlaybackAdapter(
     private val engine: SessionEngine,
     private val scope: CoroutineScope,
     private val onStateChanged: (SessionState) -> Unit = {},
+    private val onTrackChanged: (TrackStatus) -> Unit = {},
 ) {
     private var autoResumeJob: Job? = null
     private var autoStopJob: Job? = null
@@ -36,14 +38,22 @@ class SessionPlaybackAdapter(
                     onStateChanged(engine.state)
                 }
             }
+
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
+                    engine.onTrackAdvanced()
+                    onTrackChanged(engine.trackStatus)
+                }
+            }
         })
     }
 
     fun start() {
-        player.setMediaItems(engine.orderedTracks.map { MediaItem.fromUri(Uri.parse(it)) })
+        player.setMediaItems(engine.orderedTracks.map { MediaItem.fromUri(Uri.parse(it.uri)) })
         player.prepare()
         player.playWhenReady = true
         onStateChanged(engine.state)
+        onTrackChanged(engine.trackStatus)
         scheduleAutoStop()
     }
 

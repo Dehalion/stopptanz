@@ -7,12 +7,14 @@ import kotlin.test.assertTrue
 
 class SessionEngineTest {
 
+    private fun track(name: String) = Track(uri = "content://$name.mp3", name = name)
+
     private fun engine(
         mode: Mode,
         minMillis: Long = 5_000,
         maxMillis: Long = 15_000,
         pauseDurationMillis: Long = 5_000,
-        playlist: Playlist = Playlist(tracks = listOf("track1.mp3", "track2.mp3")),
+        playlist: Playlist = Playlist(tracks = listOf(track("track1"), track("track2"))),
         randomSource: RandomSource = RandomSource { min, max -> min + (max - min) / 2 },
     ) = SessionEngine(
         playlist = playlist,
@@ -98,21 +100,21 @@ class SessionEngineTest {
 
     @Test
     fun `orderedTracks preserves playlist order when shuffle is off`() {
-        val playlist = Playlist(tracks = listOf("a.mp3", "b.mp3", "c.mp3"), shuffle = false)
+        val playlist = Playlist(tracks = listOf(track("a"), track("b"), track("c")), shuffle = false)
         val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
-        assertEquals(listOf("a.mp3", "b.mp3", "c.mp3"), e.orderedTracks)
+        assertEquals(listOf(track("a"), track("b"), track("c")), e.orderedTracks)
     }
 
     @Test
     fun `orderedTracks is a seeded permutation when shuffle is on`() {
-        val playlist = Playlist(tracks = listOf("a.mp3", "b.mp3", "c.mp3", "d.mp3"), shuffle = true)
+        val playlist = Playlist(tracks = listOf(track("a"), track("b"), track("c"), track("d")), shuffle = true)
         val e = engine(Mode.FREEZE_DANCE, playlist = playlist, randomSource = RandomSource { min, _ -> min })
-        assertEquals(listOf("b.mp3", "c.mp3", "d.mp3", "a.mp3"), e.orderedTracks)
+        assertEquals(listOf(track("b"), track("c"), track("d"), track("a")), e.orderedTracks)
     }
 
     @Test
     fun `onPlaylistEnded transitions to Finished when loop is off`() {
-        val playlist = Playlist(tracks = listOf("a.mp3"), loop = false)
+        val playlist = Playlist(tracks = listOf(track("a")), loop = false)
         val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
         e.onPlaylistEnded()
         assertEquals(SessionState.Finished, e.state)
@@ -120,7 +122,7 @@ class SessionEngineTest {
 
     @Test
     fun `onPlaylistEnded stays Playing when loop is on`() {
-        val playlist = Playlist(tracks = listOf("a.mp3"), loop = true)
+        val playlist = Playlist(tracks = listOf(track("a")), loop = true)
         val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
         e.onPlaylistEnded()
         assertEquals(SessionState.Playing, e.state)
@@ -143,7 +145,7 @@ class SessionEngineTest {
 
     @Test
     fun `close transitions from Finished to Closed`() {
-        val playlist = Playlist(tracks = listOf("a.mp3"), loop = false)
+        val playlist = Playlist(tracks = listOf(track("a")), loop = false)
         val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
         e.onPlaylistEnded()
         e.close()
@@ -159,11 +161,77 @@ class SessionEngineTest {
 
     @Test
     fun `Finished state rejects Stop, Resume, and onPauseElapsed`() {
-        val playlist = Playlist(tracks = listOf("a.mp3"), loop = false)
+        val playlist = Playlist(tracks = listOf(track("a")), loop = false)
         val e = engine(Mode.MUSICAL_CHAIRS, playlist = playlist)
         e.onPlaylistEnded()
         assertFailsWith<IllegalStateException> { e.stop() }
         assertFailsWith<IllegalStateException> { e.resume() }
         assertFailsWith<IllegalStateException> { e.onPauseElapsed() }
+    }
+
+    @Test
+    fun `currentTrack starts at the first orderedTrack`() {
+        val playlist = Playlist(tracks = listOf(track("a"), track("b"), track("c")))
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        assertEquals(track("a"), e.currentTrack)
+    }
+
+    @Test
+    fun `onTrackAdvanced moves currentTrack to the next orderedTrack`() {
+        val playlist = Playlist(tracks = listOf(track("a"), track("b"), track("c")))
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        e.onTrackAdvanced()
+        assertEquals(track("b"), e.currentTrack)
+    }
+
+    @Test
+    fun `onTrackAdvanced rejects advancing past the last orderedTrack when loop is off`() {
+        val playlist = Playlist(tracks = listOf(track("a"), track("b")), loop = false)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        e.onTrackAdvanced()
+        assertFailsWith<IllegalStateException> { e.onTrackAdvanced() }
+    }
+
+    @Test
+    fun `onTrackAdvanced wraps back to the first orderedTrack when looping`() {
+        val playlist = Playlist(tracks = listOf(track("a"), track("b")), loop = true)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        e.onTrackAdvanced()
+        e.onTrackAdvanced()
+        assertEquals(track("a"), e.currentTrack)
+    }
+
+    @Test
+    fun `onTrackAdvanced rejects when not Playing`() {
+        val e = engine(Mode.FREEZE_DANCE)
+        e.stop()
+        assertFailsWith<IllegalStateException> { e.onTrackAdvanced() }
+    }
+
+    @Test
+    fun `nextTrack is the following orderedTrack, null on the last Track`() {
+        val playlist = Playlist(tracks = listOf(track("a"), track("b")))
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        assertEquals(track("b"), e.nextTrack)
+        e.onTrackAdvanced()
+        assertEquals(null, e.nextTrack)
+    }
+
+    @Test
+    fun `remainingTracks is a true countdown when loop is off`() {
+        val playlist = Playlist(tracks = listOf(track("a"), track("b"), track("c")), loop = false)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        assertEquals(TrackRemaining.Countdown(2), e.remainingTracks)
+        e.onTrackAdvanced()
+        assertEquals(TrackRemaining.Countdown(1), e.remainingTracks)
+    }
+
+    @Test
+    fun `remainingTracks is a Track-of-N position when loop is on`() {
+        val playlist = Playlist(tracks = listOf(track("a"), track("b"), track("c")), loop = true)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        assertEquals(TrackRemaining.Position(1, 3), e.remainingTracks)
+        e.onTrackAdvanced()
+        assertEquals(TrackRemaining.Position(2, 3), e.remainingTracks)
     }
 }

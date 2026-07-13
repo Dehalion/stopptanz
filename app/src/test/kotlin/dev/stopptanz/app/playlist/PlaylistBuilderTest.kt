@@ -1,5 +1,6 @@
 package dev.stopptanz.app.playlist
 
+import dev.stopptanz.engine.Track
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -18,14 +19,31 @@ class PlaylistBuilderTest {
             ),
         )
 
-        assertEquals(listOf("content://track1.mp3", "content://track2.flac"), playlist?.tracks)
+        assertEquals(
+            listOf(Track("content://track1.mp3", "track1"), Track("content://track2.flac", "track2")),
+            playlist?.tracks,
+        )
     }
 
     @Test
     fun `falls back to extension when mime type missing`() {
         val playlist = PlaylistBuilder.build(listOf(file("track1.mp3", mimeType = null)))
 
-        assertEquals(listOf("content://track1.mp3"), playlist?.tracks)
+        assertEquals(listOf(Track("content://track1.mp3", "track1")), playlist?.tracks)
+    }
+
+    @Test
+    fun `track display name strips the extension only`() {
+        val playlist = PlaylistBuilder.build(listOf(file("My Song.Final.mp3", "audio/mpeg")))
+
+        assertEquals("My Song.Final", playlist?.tracks?.single()?.name)
+    }
+
+    @Test
+    fun `track display name is used as-is when there is no extension`() {
+        val playlist = PlaylistBuilder.build(listOf(file("track1", "audio/mpeg")))
+
+        assertEquals("track1", playlist?.tracks?.single()?.name)
     }
 
     @Test

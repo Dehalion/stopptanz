@@ -16,8 +16,39 @@ class SessionEngine(
         private set
 
     /** Playlist tracks in playback order: shuffled once per Session if [Playlist.shuffle] is set. */
-    val orderedTracks: List<String> by lazy {
+    val orderedTracks: List<Track> by lazy {
         if (playlist.shuffle) shuffledTracks() else playlist.tracks
+    }
+
+    var currentTrackIndex: Int = 0
+        private set
+
+    val currentTrack: Track get() = orderedTracks[currentTrackIndex]
+
+    /** The Track that follows [currentTrack] in [orderedTracks]; `null` if [currentTrack] is last. */
+    val nextTrack: Track? get() = orderedTracks.getOrNull(currentTrackIndex + 1)
+
+    /** Position when [Playlist.loop] is on ("Track X of N"); a true countdown of Tracks left otherwise. */
+    val remainingTracks: TrackRemaining
+        get() = if (playlist.loop) {
+            TrackRemaining.Position(currentTrackIndex + 1, orderedTracks.size)
+        } else {
+            TrackRemaining.Countdown(orderedTracks.size - currentTrackIndex - 1)
+        }
+
+    /** Current Track, next Track, and remaining count, bundled for the adapter/UI to observe together. */
+    val trackStatus: TrackStatus get() = TrackStatus(currentTrack, nextTrack, remainingTracks)
+
+    /** Called by the playback adapter each time ExoPlayer moves on to the next Track. */
+    fun onTrackAdvanced() {
+        check(state is SessionState.Playing) { "Cannot advance Track from $state" }
+        val next = currentTrackIndex + 1
+        currentTrackIndex = if (playlist.loop) {
+            next % orderedTracks.size
+        } else {
+            check(next < orderedTracks.size) { "Cannot advance Track past the end of a non-looping Playlist" }
+            next
+        }
     }
 
     fun nextStopDelayMillis(): Long =
@@ -41,7 +72,7 @@ class SessionEngine(
         }
     }
 
-    private fun shuffledTracks(): List<String> {
+    private fun shuffledTracks(): List<Track> {
         val tracks = playlist.tracks.toMutableList()
         for (i in tracks.indices.reversed()) {
             if (i == 0) break

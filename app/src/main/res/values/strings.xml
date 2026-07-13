@@ -24,6 +24,15 @@
     <string name="toggle_state_on">On</string>
     <string name="toggle_state_off">Off</string>
 
+    <string name="label_current_track">Playing: %1$s</string>
+    <string name="label_next_track">Next: %1$s</string>
+    <string name="label_next_track_none">Next: —</string>
+    <string name="label_track_position">Track %1$d of %2$d</string>
+    <plurals name="label_tracks_remaining">
+        <item quantity="one">%1$d track remaining</item>
+        <item quantity="other">%1$d tracks remaining</item>
+    </plurals>
+
     <string name="button_start_session">Start Session</string>
     <string name="button_stop">Stop</string>
     <string name="button_resume">Resume</string>

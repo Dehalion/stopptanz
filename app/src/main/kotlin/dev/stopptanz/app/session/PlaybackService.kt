@@ -21,6 +21,7 @@ import dev.stopptanz.engine.Playlist
 import dev.stopptanz.engine.SessionEngine
 import dev.stopptanz.engine.SessionState
 import dev.stopptanz.engine.StopInterval
+import dev.stopptanz.engine.TrackStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -57,6 +58,9 @@ class PlaybackService : MediaSessionService() {
     private val _currentMode = MutableStateFlow<Mode?>(null)
     /** Mode of the in-progress Session, if any — lets a rebinding Activity recover which Mode's UI to show. */
     val currentMode: StateFlow<Mode?> = _currentMode
+
+    private val _trackStatus = MutableStateFlow<TrackStatus?>(null)
+    val trackStatus: StateFlow<TrackStatus?> = _trackStatus
 
     override fun onCreate() {
         super.onCreate()
@@ -133,6 +137,7 @@ class PlaybackService : MediaSessionService() {
                 _sessionState.value = state
                 updateNotification()
             },
+            onTrackChanged = { status -> _trackStatus.value = status },
         ).also { it.start() }
 
         ServiceCompat.startForeground(
@@ -224,6 +229,7 @@ class PlaybackService : MediaSessionService() {
         adapter = null
         _currentMode.value = null
         _sessionState.value = null
+        _trackStatus.value = null
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }

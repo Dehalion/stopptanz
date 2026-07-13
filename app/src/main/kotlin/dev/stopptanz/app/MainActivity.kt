@@ -46,6 +46,8 @@ import dev.stopptanz.app.settings.SettingsRepository
 import dev.stopptanz.engine.Mode
 import dev.stopptanz.engine.Playlist
 import dev.stopptanz.engine.SessionState
+import dev.stopptanz.engine.TrackRemaining
+import dev.stopptanz.engine.TrackStatus
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -113,6 +115,7 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings,
     val loop by sessionSettings.loopFlow().collectAsState(initial = false)
 
     var sessionState by remember { mutableStateOf<SessionState?>(null) }
+    var trackStatus by remember { mutableStateOf<TrackStatus?>(null) }
     var boundService by remember { mutableStateOf<PlaybackService?>(null) }
     var serviceConnection by remember { mutableStateOf<ServiceConnection?>(null) }
     var activeSessionMode by remember { mutableStateOf(Mode.FREEZE_DANCE) }
@@ -131,6 +134,7 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings,
                 boundService = service
                 scope.launch { service.sessionState.collect { sessionState = it } }
                 scope.launch { service.currentMode.collect { it?.let { mode -> activeSessionMode = mode } } }
+                scope.launch { service.trackStatus.collect { trackStatus = it } }
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
@@ -200,6 +204,8 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings,
         }
 
         if (sessionState == SessionState.Playing || sessionState == SessionState.Stopped) {
+            trackStatus?.let { TrackStatusDisplay(it) }
+
             PauseDurationControls(pauseDurationMillis) { millis ->
                 scope.launch { sessionSettings.setPauseDurationMillis(millis) }
                 activeService.setPauseDurationMillis(millis)
@@ -252,6 +258,23 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings,
             serviceConnection?.let { context.unbindService(it) }
         }
     }
+}
+
+@Composable
+private fun TrackStatusDisplay(trackStatus: TrackStatus) {
+    Text(stringResource(R.string.label_current_track, trackStatus.current.name), Modifier.padding(vertical = 4.dp))
+    Text(
+        trackStatus.next?.let { stringResource(R.string.label_next_track, it.name) }
+            ?: stringResource(R.string.label_next_track_none),
+        Modifier.padding(vertical = 4.dp),
+    )
+    Text(trackStatus.remaining.displayText(), Modifier.padding(vertical = 4.dp))
+}
+
+@Composable
+private fun TrackRemaining.displayText(): String = when (this) {
+    is TrackRemaining.Position -> stringResource(R.string.label_track_position, current, total)
+    is TrackRemaining.Countdown -> pluralStringResource(R.plurals.label_tracks_remaining, remaining, remaining)
 }
 
 @Composable
