@@ -36,7 +36,10 @@
     <string name="status_folder_access_needed">Ordnerzugriff wird benötigt, um Musik auszuwählen. Bitte versuche es erneut.</string>
     <string name="status_folder_inaccessible">Ordner \"%1$s\" ist nicht mehr zugänglich. Bitte wähle ihn erneut aus.</string>
     <string name="status_folder_empty">Ordner \"%1$s\" enthält keine Audiodateien.</string>
-    <string name="status_folder_selected">Ordner: %1$s (%2$d Titel)</string>
+    <plurals name="status_folder_selected">
+        <item quantity="one">Ordner: %1$s (%2$d Titel)</item>
+        <item quantity="other">Ordner: %1$s (%2$d Titel)</item>
+    </plurals>
 
     <string name="notification_channel_playback">Wiedergabe</string>
     <string name="notification_session_running">%1$s-Sitzung läuft</string>

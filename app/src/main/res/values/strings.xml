@@ -36,7 +36,10 @@
     <string name="status_folder_access_needed">Folder access is needed to pick music. Please try again.</string>
     <string name="status_folder_inaccessible">Folder \"%1$s\" is no longer accessible. Please pick it again.</string>
     <string name="status_folder_empty">Folder \"%1$s\" has no audio files.</string>
-    <string name="status_folder_selected">Folder: %1$s (%2$d tracks)</string>
+    <plurals name="status_folder_selected">
+        <item quantity="one">Folder: %1$s (%2$d track)</item>
+        <item quantity="other">Folder: %1$s (%2$d tracks)</item>
+    </plurals>
 
     <string name="notification_channel_playback">Playback</string>
     <string name="notification_session_running">%1$s Session running</string>

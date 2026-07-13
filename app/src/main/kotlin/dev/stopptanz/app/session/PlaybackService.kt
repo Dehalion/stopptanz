@@ -51,11 +51,14 @@ class PlaybackService : MediaSessionService() {
     private lateinit var routedPlayer: ForwardingPlayer
     private lateinit var mediaSession: MediaSession
     private var adapter: SessionPlaybackAdapter? = null
-    private var currentMode: Mode? = null
     private val routedPlayerListeners = mutableListOf<Player.Listener>()
 
     private val _sessionState = MutableStateFlow<SessionState?>(null)
     val sessionState: StateFlow<SessionState?> = _sessionState
+
+    private val _currentMode = MutableStateFlow<Mode?>(null)
+    /** Mode of the in-progress Session, if any — lets a rebinding Activity recover which Mode's UI to show. */
+    val currentMode: StateFlow<Mode?> = _currentMode
 
     override fun onCreate() {
         super.onCreate()
@@ -86,7 +89,7 @@ class PlaybackService : MediaSessionService() {
             // so the system UI matches the in-app button (which shows no Resume control here).
             override fun getAvailableCommands(): Player.Commands {
                 val commands = super.getAvailableCommands()
-                return if (currentMode == Mode.FREEZE_DANCE && _sessionState.value == SessionState.Stopped) {
+                return if (_currentMode.value == Mode.FREEZE_DANCE && _sessionState.value == SessionState.Stopped) {
                     commands.buildUpon().remove(Player.COMMAND_PLAY_PAUSE).build()
                 } else {
                     commands
@@ -132,7 +135,7 @@ class PlaybackService : MediaSessionService() {
                     playerCommand: Int,
                 ): Int {
                     val blockManualResume = playerCommand == Player.COMMAND_PLAY_PAUSE &&
-                        currentMode == Mode.FREEZE_DANCE &&
+                        _currentMode.value == Mode.FREEZE_DANCE &&
                         _sessionState.value == SessionState.Stopped
                     return if (blockManualResume) SessionResult.RESULT_ERROR_NOT_SUPPORTED else SessionResult.RESULT_SUCCESS
                 }
@@ -155,7 +158,7 @@ class PlaybackService : MediaSessionService() {
         stopIntervalMaxMillis: Int,
     ) {
         adapter?.cancelJobs()
-        currentMode = mode
+        _currentMode.value = mode
         val engine = SessionEngine(
             playlist = playlist,
             mode = mode,
@@ -187,7 +190,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     private fun updateNotification() {
-        val mode = currentMode ?: return
+        val mode = _currentMode.value ?: return
         val manager = getSystemService(NotificationManager::class.java)
         manager.notify(NOTIFICATION_ID, buildNotification(mode, _sessionState.value))
     }
@@ -239,7 +242,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     fun resume() {
-        if (_sessionState.value == SessionState.Stopped && currentMode == Mode.MUSICAL_CHAIRS) {
+        if (_sessionState.value == SessionState.Stopped && _currentMode.value == Mode.MUSICAL_CHAIRS) {
             adapter?.resume()
         }
     }
@@ -248,7 +251,7 @@ class PlaybackService : MediaSessionService() {
     fun acknowledgeFinished() {
         adapter?.cancelJobs()
         adapter = null
-        currentMode = null
+        _currentMode.value = null
         _sessionState.value = null
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()

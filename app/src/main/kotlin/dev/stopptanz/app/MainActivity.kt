@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -31,9 +33,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import dev.stopptanz.app.playlist.PlaylistRepository
 import dev.stopptanz.app.playlist.PlaylistSelectionState
 import dev.stopptanz.app.session.PlaybackService
@@ -77,7 +79,7 @@ fun StopptanzApp(playlistRepository: PlaylistRepository, sessionSettings: Sessio
         Surface(Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize()) {
                 Column(
-                    Modifier.fillMaxSize().padding(16.dp),
+                    Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(stringResource(R.string.app_name))
@@ -115,6 +117,29 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings)
     val requestNotificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { /* no-op: absence just means no visible notification, FGS still runs */ }
+
+    // Bind once for the Activity's whole lifetime so PlaybackService — not this Compose
+    // tree — stays the source of truth for Session state across rotation/recreation.
+    LaunchedEffect(Unit) {
+        val connection = object : ServiceConnection {
+            override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+                val service = (binder as PlaybackService.LocalBinder).service
+                boundService = service
+                scope.launch { service.sessionState.collect { sessionState = it } }
+                scope.launch { service.currentMode.collect { it?.let { mode -> activeSessionMode = mode } } }
+            }
+
+            override fun onServiceDisconnected(name: ComponentName?) {
+                boundService = null
+            }
+        }
+        serviceConnection = connection
+        // Explicitly started (not just bound) so the service outlives the brief unbind/rebind
+        // gap during Activity recreation instead of being torn down when bindings hit zero.
+        val intent = Intent(context, PlaybackService::class.java)
+        context.startService(intent)
+        context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
+    }
 
     val onState = stringResource(R.string.toggle_state_on)
     val offState = stringResource(R.string.toggle_state_off)
@@ -165,31 +190,14 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings)
         Button(onClick = { scope.launch { sessionSettings.setLoop(!loop) } }) { Text(stringResource(R.string.button_toggle_loop)) }
 
         Button(onClick = onClick@{
-            if (serviceConnection != null) return@onClick
+            val service = boundService ?: return@onClick
+            if (sessionState != null) return@onClick
             activeSessionMode = mode
             val sessionPlaylist = playlist.copy(shuffle = shuffle, loop = loop)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 requestNotificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }
-            val connection = object : ServiceConnection {
-                override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
-                    val service = (binder as PlaybackService.LocalBinder).service
-                    boundService = service
-                    service.startSession(sessionPlaylist, mode, pauseDurationMillis, stopIntervalMinMillis, stopIntervalMaxMillis)
-                    scope.launch {
-                        service.sessionState.collect { sessionState = it }
-                    }
-                }
-
-                override fun onServiceDisconnected(name: ComponentName?) {
-                    boundService = null
-                    serviceConnection = null
-                }
-            }
-            serviceConnection = connection
-            val intent = Intent(context, PlaybackService::class.java)
-            ContextCompat.startForegroundService(context, intent)
-            context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
+            service.startSession(sessionPlaylist, mode, pauseDurationMillis, stopIntervalMinMillis, stopIntervalMaxMillis)
         }) {
             Text(stringResource(R.string.button_start_session))
         }
@@ -203,12 +211,7 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings)
             }
             SessionState.Finished -> {
                 Text(stringResource(R.string.label_finished), Modifier.padding(vertical = 4.dp))
-                Button(onClick = {
-                    activeService.acknowledgeFinished()
-                    serviceConnection?.let { context.unbindService(it) }
-                    boundService = null
-                    serviceConnection = null
-                }) { Text(stringResource(R.string.button_done)) }
+                Button(onClick = { activeService.acknowledgeFinished() }) { Text(stringResource(R.string.button_done)) }
             }
             null -> Unit
         }
@@ -238,5 +241,10 @@ private fun PlaylistSelectionState.statusText(): String = when (this) {
         stringResource(R.string.status_folder_access_needed)
     }
     is PlaylistSelectionState.Empty -> stringResource(R.string.status_folder_empty, folderName)
-    is PlaylistSelectionState.Selected -> stringResource(R.string.status_folder_selected, folderName, playlist.tracks.size)
+    is PlaylistSelectionState.Selected -> pluralStringResource(
+        R.plurals.status_folder_selected,
+        playlist.tracks.size,
+        folderName,
+        playlist.tracks.size,
+    )
 }
