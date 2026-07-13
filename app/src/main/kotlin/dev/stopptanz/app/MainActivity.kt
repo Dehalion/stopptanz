@@ -98,12 +98,18 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val pauseDurationMillis by sessionSettings.pauseDurationMillisFlow().collectAsState(initial = 5_000)
+    val mode by sessionSettings.modeFlow().collectAsState(initial = Mode.FREEZE_DANCE)
 
     var sessionState by remember { mutableStateOf<SessionState>(SessionState.Playing) }
     var adapter by remember { mutableStateOf<SessionPlaybackAdapter?>(null) }
+    var activeSessionMode by remember { mutableStateOf(Mode.FREEZE_DANCE) }
 
     val activeAdapter = adapter
     if (activeAdapter == null) {
+        Text("Mode: ${mode.label()}", Modifier.padding(vertical = 4.dp))
+        Button(onClick = { scope.launch { sessionSettings.setMode(Mode.FREEZE_DANCE) } }) { Text("Freeze Dance") }
+        Button(onClick = { scope.launch { sessionSettings.setMode(Mode.MUSICAL_CHAIRS) } }) { Text("Musical Chairs") }
+
         Text("Pause: ${pauseDurationMillis / 1000}s", Modifier.padding(vertical = 4.dp))
         Button(onClick = {
             scope.launch { sessionSettings.setPauseDurationMillis((pauseDurationMillis - 1_000).coerceIn(1_000, 30_000)) }
@@ -113,14 +119,19 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings)
         }) { Text("+1s") }
 
         Button(onClick = {
-            adapter = startSession(context, scope, playlist, pauseDurationMillis) { sessionState = it }
+            activeSessionMode = mode
+            adapter = startSession(context, scope, playlist, mode, pauseDurationMillis) { sessionState = it }
         }) {
             Text("Start Session")
         }
     } else {
         when (sessionState) {
             SessionState.Playing -> Button(onClick = { activeAdapter.stop() }) { Text("Stop") }
-            SessionState.Stopped -> Text("Stopped — resuming automatically…")
+            SessionState.Stopped -> if (activeSessionMode == Mode.MUSICAL_CHAIRS) {
+                Button(onClick = { activeAdapter.resume() }) { Text("Resume") }
+            } else {
+                Text("Stopped — resuming automatically…")
+            }
             SessionState.Finished -> Text("Finished")
         }
     }
@@ -130,17 +141,18 @@ private fun SessionSection(playlist: Playlist, sessionSettings: SessionSettings)
     }
 }
 
-/** #6 is Freeze Dance / manual Stop only — auto-timer (#8) isn't wired up yet, so Stop Interval is unused. */
+/** Auto-timer (#8) isn't wired up yet, so Stop Interval is unused. */
 private fun startSession(
     context: Context,
     scope: CoroutineScope,
     playlist: Playlist,
+    mode: Mode,
     pauseDurationMillis: Int,
     onStateChanged: (SessionState) -> Unit,
 ): SessionPlaybackAdapter {
     val engine = SessionEngine(
         playlist = playlist,
-        mode = Mode.FREEZE_DANCE,
+        mode = mode,
         stopInterval = StopInterval.unused,
         pauseDurationMillis = pauseDurationMillis.toLong(),
     )
@@ -153,6 +165,11 @@ private fun startSession(
     adapter.start(playlist)
     onStateChanged(engine.state)
     return adapter
+}
+
+private fun Mode.label(): String = when (this) {
+    Mode.FREEZE_DANCE -> "Freeze Dance"
+    Mode.MUSICAL_CHAIRS -> "Musical Chairs"
 }
 
 private fun PlaylistSelectionState.statusText(): String = when (this) {

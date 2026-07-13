@@ -45,6 +45,12 @@ class SessionPlaybackAdapter(
         }
     }
 
+    fun resume() {
+        engine.resume()
+        player.play()
+        onStateChanged(engine.state)
+    }
+
     fun release() {
         autoResumeJob?.cancel()
         player.release()
