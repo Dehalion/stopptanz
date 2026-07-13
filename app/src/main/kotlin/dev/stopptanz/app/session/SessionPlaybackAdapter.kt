@@ -86,10 +86,12 @@ class SessionPlaybackAdapter(
         autoStopJob?.cancel()
     }
 
+    /** Stops playback and releases the held media/decoder resources; the player itself stays reusable for the next Session. */
     fun close() {
         cancelJobs()
         engine.close()
-        player.pause()
+        player.stop()
+        player.clearMediaItems()
         onStateChanged(engine.state)
     }
 
