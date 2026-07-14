@@ -289,10 +289,6 @@ private fun SessionSection(
             service.startSession(sessionPlaylist, mode, pauseDurationMillis, stopIntervalMinMillis, stopIntervalMaxMillis)
         })
     } else {
-        if (sessionState == SessionState.Playing || sessionState == SessionState.Stopped) {
-            trackStatus?.let { TrackStatusDisplay(it, playbackPosition) }
-        }
-
         when (sessionState) {
             SessionState.Playing -> NeonPrimaryButton(stringResource(R.string.button_stop), onClick = { activeService.stop() }, modifier = Modifier.padding(top = 8.dp))
             SessionState.Stopped ->
@@ -302,30 +298,6 @@ private fun SessionSection(
                 NeonPrimaryButton(stringResource(R.string.button_done), onClick = { activeService.acknowledgeFinished() })
             }
             SessionState.Closed, null -> Unit
-        }
-
-        if (sessionState == SessionState.Playing || sessionState == SessionState.Stopped) {
-            NeonCard(Modifier.padding(vertical = 14.dp)) {
-                PauseDurationControls(pauseDurationMillis) { millis ->
-                    scope.launch { sessionSettings.setPauseDurationMillis(millis) }
-                    activeService.setPauseDurationMillis(millis)
-                }
-            }
-
-            NeonCard {
-                StopIntervalControls(
-                    stopIntervalMinMillis = stopIntervalMinMillis,
-                    stopIntervalMaxMillis = stopIntervalMaxMillis,
-                    onMinChange = { millis ->
-                        scope.launch { sessionSettings.setStopIntervalMinMillis(millis) }
-                        activeService.setStopInterval(millis, stopIntervalMaxMillis)
-                    },
-                    onMaxChange = { millis ->
-                        scope.launch { sessionSettings.setStopIntervalMaxMillis(millis) }
-                        activeService.setStopInterval(stopIntervalMinMillis, millis)
-                    },
-                )
-            }
         }
 
         NeonOutlineButton(
@@ -357,6 +329,34 @@ private fun SessionSection(
                     }
                 },
             )
+        }
+
+        if (sessionState == SessionState.Playing || sessionState == SessionState.Stopped) {
+            NeonCard(Modifier.padding(vertical = 14.dp)) {
+                PauseDurationControls(pauseDurationMillis) { millis ->
+                    scope.launch { sessionSettings.setPauseDurationMillis(millis) }
+                    activeService.setPauseDurationMillis(millis)
+                }
+            }
+
+            NeonCard {
+                StopIntervalControls(
+                    stopIntervalMinMillis = stopIntervalMinMillis,
+                    stopIntervalMaxMillis = stopIntervalMaxMillis,
+                    onMinChange = { millis ->
+                        scope.launch { sessionSettings.setStopIntervalMinMillis(millis) }
+                        activeService.setStopInterval(millis, stopIntervalMaxMillis)
+                    },
+                    onMaxChange = { millis ->
+                        scope.launch { sessionSettings.setStopIntervalMaxMillis(millis) }
+                        activeService.setStopInterval(stopIntervalMinMillis, millis)
+                    },
+                )
+            }
+        }
+
+        if (sessionState == SessionState.Playing || sessionState == SessionState.Stopped) {
+            trackStatus?.let { TrackStatusDisplay(it, playbackPosition) }
         }
     }
 
