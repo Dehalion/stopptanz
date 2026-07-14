@@ -28,6 +28,10 @@ _Avoid_: Timer, delay
 The ordered list of one or more local music files chosen for a Session. Plays in list order and stops at the end by default; Shuffle and Loop are host-toggleable, both off by default.
 _Avoid_: Queue, library
 
+**Playlist File**:
+An on-disk file (e.g. `.m3u`) that a Playlist can be opened from or saved to, letting a host reuse or share a curated track order across sessions/devices. Distinct from Playlist itself — the Playlist File is the persisted serialization, not the in-Session ordered list.
+_Avoid_: Playlist (reserve for the in-Session list), Queue file
+
 **Finished**:
 The Session state reached when the Playlist plays to its end with Loop off. Playback stays stopped until the host explicitly acts (not the same as a Stop — no resume happens automatically or via the mode's normal resume rule).
 _Avoid_: Ended, done
