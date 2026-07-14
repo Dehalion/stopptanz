@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import dev.stopptanz.app.playlist.PlaylistRepository
 import dev.stopptanz.app.playlist.PlaylistSelectionState
 import dev.stopptanz.app.playlist.SelectionKind
+import dev.stopptanz.app.playlist.TrackReview
 import dev.stopptanz.app.session.PlaybackPosition
 import dev.stopptanz.app.session.PlaybackService
 import dev.stopptanz.app.session.SessionSettings
@@ -61,6 +62,7 @@ import dev.stopptanz.app.ui.theme.StopptanzTheme
 import dev.stopptanz.engine.Mode
 import dev.stopptanz.engine.Playlist
 import dev.stopptanz.engine.SessionState
+import dev.stopptanz.engine.Track
 import dev.stopptanz.engine.TrackRemaining
 import dev.stopptanz.engine.TrackStatus
 import kotlinx.coroutines.launch
@@ -81,11 +83,13 @@ class MainActivity : ComponentActivity() {
 fun StopptanzApp(playlistRepository: PlaylistRepository, sessionSettings: SessionSettings) {
     val scope = rememberCoroutineScope()
     var state by remember { mutableStateOf<PlaylistSelectionState>(PlaylistSelectionState.Loading) }
+    var reviewedPlaylist by remember { mutableStateOf<Playlist?>(null) }
 
     val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri == null) {
             state = PlaylistSelectionState.PickerCancelled
         } else {
+            reviewedPlaylist = null
             scope.launch { state = playlistRepository.selectFolder(uri) }
         }
     }
@@ -94,6 +98,7 @@ fun StopptanzApp(playlistRepository: PlaylistRepository, sessionSettings: Sessio
         if (uri == null) {
             state = PlaylistSelectionState.PickerCancelled
         } else {
+            reviewedPlaylist = null
             scope.launch { state = playlistRepository.selectTrack(uri) }
         }
     }
@@ -113,12 +118,21 @@ fun StopptanzApp(playlistRepository: PlaylistRepository, sessionSettings: Sessio
 
                 val selected = state as? PlaylistSelectionState.Selected
                 if (selected != null) {
-                    SessionSection(
-                        selected.playlist,
-                        sessionSettings,
-                        onPickFolder = { pickFolder.launch(null) },
-                        onPickTrack = { pickTrack.launch(arrayOf("audio/*")) },
-                    )
+                    val needsReview = selected.kind == SelectionKind.FOLDER && reviewedPlaylist == null
+                    if (needsReview) {
+                        PlaylistReviewScreen(
+                            tracks = selected.playlist.tracks,
+                            onConfirm = { edited -> reviewedPlaylist = selected.playlist.copy(tracks = edited) },
+                        )
+                    } else {
+                        val playlistToShow = if (selected.kind == SelectionKind.FOLDER) requireNotNull(reviewedPlaylist) else selected.playlist
+                        SessionSection(
+                            playlistToShow,
+                            sessionSettings,
+                            onPickFolder = { pickFolder.launch(null) },
+                            onPickTrack = { pickTrack.launch(arrayOf("audio/*")) },
+                        )
+                    }
                 } else {
                     NeonOutlineButton(stringResource(R.string.pick_music_folder), onClick = { pickFolder.launch(null) }, modifier = Modifier.padding(bottom = 10.dp))
                     NeonOutlineButton(stringResource(R.string.pick_track), onClick = { pickTrack.launch(arrayOf("audio/*")) })
@@ -327,6 +341,48 @@ private fun SessionSection(
         onDispose {
             serviceConnection?.let { context.unbindService(it) }
         }
+    }
+}
+
+@Composable
+private fun PlaylistReviewScreen(tracks: List<Track>, onConfirm: (List<Track>) -> Unit) {
+    var editedTracks by remember(tracks) { mutableStateOf(tracks) }
+
+    NeonCard(Modifier.padding(bottom = 14.dp)) {
+        NeonLabel(stringResource(R.string.label_review_tracks), Modifier.padding(bottom = 8.dp))
+        editedTracks.forEachIndexed { index, track ->
+            TrackReviewRow(
+                name = track.name,
+                canMoveUp = index > 0,
+                canMoveDown = index < editedTracks.lastIndex,
+                onMoveUp = { editedTracks = TrackReview.moveUp(editedTracks, index) },
+                onMoveDown = { editedTracks = TrackReview.moveDown(editedTracks, index) },
+                onRemove = { editedTracks = TrackReview.remove(editedTracks, index) },
+            )
+        }
+    }
+
+    NeonPrimaryButton(
+        stringResource(R.string.button_review_continue),
+        onClick = { onConfirm(editedTracks) },
+        enabled = editedTracks.isNotEmpty(),
+    )
+}
+
+@Composable
+private fun TrackReviewRow(
+    name: String,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        NeonValue(name, Modifier.weight(1f))
+        TextButton(onClick = onMoveUp, enabled = canMoveUp) { Text(stringResource(R.string.button_move_up)) }
+        TextButton(onClick = onMoveDown, enabled = canMoveDown) { Text(stringResource(R.string.button_move_down)) }
+        TextButton(onClick = onRemove) { Text(stringResource(R.string.button_remove_track)) }
     }
 }
 

@@ -92,12 +92,19 @@ fun NeonCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() 
 }
 
 @Composable
-fun NeonPrimaryButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, brush: Brush = NeonPrimaryButtonBrush) {
+fun NeonPrimaryButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    brush: Brush = NeonPrimaryButtonBrush,
+    enabled: Boolean = true,
+) {
     Button(
         onClick = onClick,
         modifier = modifier.fillMaxWidth().background(brush, RoundedCornerShape(16.dp)),
         colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = NeonTextPrimary),
         shape = RoundedCornerShape(16.dp),
+        enabled = enabled,
     ) {
         Text(text, fontWeight = FontWeight.Bold)
     }

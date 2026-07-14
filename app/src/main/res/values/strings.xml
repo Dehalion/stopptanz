@@ -35,6 +35,12 @@
         <item quantity="other">%1$d tracks remaining</item>
     </plurals>
 
+    <string name="label_review_tracks">Review Tracks</string>
+    <string name="button_review_continue">Continue</string>
+    <string name="button_move_up">↑</string>
+    <string name="button_move_down">↓</string>
+    <string name="button_remove_track">✕</string>
+
     <string name="button_start_session">Start Session</string>
     <string name="button_stop">Stop</string>
     <string name="button_resume">Resume</string>
