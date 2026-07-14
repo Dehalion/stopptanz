@@ -47,3 +47,7 @@ _Avoid_: Ended, Stopped, Quit
 **Skip**:
 A host action jumping to the previous or next Track in the Playlist immediately, without ending the Session. Resets the Stop Interval countdown (and the pause countdown, if currently Stopped in Freeze Dance). Bound by Loop for wrap-around at the Playlist ends.
 _Avoid_: Next/Previous, Advance
+
+**Seek**:
+A host action jumping playback position within the current Track forward/back by a fixed 10s step, clamped to Track bounds.
+_Avoid_: Scrub, Rewind, Fast-forward

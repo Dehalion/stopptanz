@@ -31,6 +31,8 @@
     <string name="button_resume">Fortsetzen</string>
     <string name="button_resume_countdown">Fortsetzen in %1$ds</string>
     <string name="button_skip_previous">⏮</string>
+    <string name="button_seek_backward">−10s</string>
+    <string name="button_seek_forward">+10s</string>
     <string name="button_skip_next">⏭</string>
     <string name="label_finished">Abgeschlossen</string>
     <string name="button_done">Fertig</string>

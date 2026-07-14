@@ -371,7 +371,13 @@ private fun SessionSection(
         if (sessionState == SessionState.Playing || sessionState == SessionState.Stopped) {
             trackStatus?.let {
                 TrackStatusDisplay(it, playbackPosition)
-                SkipControls(it, onSkipPrevious = { activeService.skipToPrevious() }, onSkipNext = { activeService.skipToNext() })
+                SkipControls(
+                    it,
+                    onSkipPrevious = { activeService.skipToPrevious() },
+                    onSeekBackward = { activeService.seekBackward() },
+                    onSeekForward = { activeService.seekForward() },
+                    onSkipNext = { activeService.skipToNext() },
+                )
             }
         }
     }
@@ -561,13 +567,29 @@ private fun TrackStatusDisplay(trackStatus: TrackStatus, playbackPosition: Playb
 }
 
 @Composable
-private fun SkipControls(trackStatus: TrackStatus, onSkipPrevious: () -> Unit, onSkipNext: () -> Unit) {
+private fun SkipControls(
+    trackStatus: TrackStatus,
+    onSkipPrevious: () -> Unit,
+    onSeekBackward: () -> Unit,
+    onSeekForward: () -> Unit,
+    onSkipNext: () -> Unit,
+) {
     Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         NeonOutlineButton(
             stringResource(R.string.button_skip_previous),
             onClick = onSkipPrevious,
             modifier = Modifier.weight(1f),
             enabled = trackStatus.canSkipPrevious,
+        )
+        NeonOutlineButton(
+            stringResource(R.string.button_seek_backward),
+            onClick = onSeekBackward,
+            modifier = Modifier.weight(1f),
+        )
+        NeonOutlineButton(
+            stringResource(R.string.button_seek_forward),
+            onClick = onSeekForward,
+            modifier = Modifier.weight(1f),
         )
         NeonOutlineButton(
             stringResource(R.string.button_skip_next),

@@ -1,6 +1,7 @@
 package dev.stopptanz.app.session
 
 import android.net.Uri
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -16,6 +17,7 @@ import kotlinx.coroutines.launch
 
 private const val POSITION_POLL_INTERVAL_MILLIS = 500L
 private const val PAUSE_COUNTDOWN_TICK_MILLIS = 1_000L
+private const val SEEK_STEP_MILLIS = 10_000L
 
 /**
  * Thin glue layer wrapping ExoPlayer, driven by [SessionEngine] state.
@@ -101,6 +103,23 @@ class SessionPlaybackAdapter(
     fun skipToNext() {
         engine.skipToNext()
         seekToCurrentTrackAndRescheduleTimers()
+    }
+
+    /** Jumps position backward within the current Track by [SEEK_STEP_MILLIS], clamped at the Track start. Leaves any pending Stop-Interval/pause timer untouched. */
+    fun seekBackward() {
+        seekBy(-SEEK_STEP_MILLIS)
+    }
+
+    /** Jumps position forward within the current Track by [SEEK_STEP_MILLIS], clamped at the Track end (does not advance to the next Track). Leaves any pending Stop-Interval/pause timer untouched. */
+    fun seekForward() {
+        seekBy(SEEK_STEP_MILLIS)
+    }
+
+    private fun seekBy(deltaMillis: Long) {
+        val duration = player.duration
+        val upperBound = if (duration == C.TIME_UNSET) Long.MAX_VALUE else duration
+        val target = (player.currentPosition + deltaMillis).coerceIn(0, upperBound)
+        player.seekTo(target)
     }
 
     private fun seekToCurrentTrackAndRescheduleTimers() {

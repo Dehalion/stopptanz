@@ -99,10 +99,18 @@ class PlaybackService : MediaSessionService() {
                     session: MediaSession,
                     controller: MediaSession.ControllerInfo,
                 ): MediaSession.ConnectionResult {
+                    // Seek (issue #29) is an in-app-only action, driven through PlaybackService's
+                    // own seekBackward()/seekForward() methods rather than the MediaSession's
+                    // player commands — strip every command an external controller (lock
+                    // screen/Bluetooth/Android Auto) could use to seek within the current item.
                     val playerCommands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
                         .remove(Player.COMMAND_STOP)
                         .remove(Player.COMMAND_SEEK_TO_NEXT)
                         .remove(Player.COMMAND_SEEK_TO_PREVIOUS)
+                        .remove(Player.COMMAND_SEEK_BACK)
+                        .remove(Player.COMMAND_SEEK_FORWARD)
+                        .remove(Player.COMMAND_SEEK_TO_DEFAULT_POSITION)
+                        .remove(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)
                         .build()
                     return MediaSession.ConnectionResult.accept(
                         MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS,
@@ -222,6 +230,20 @@ class PlaybackService : MediaSessionService() {
     fun skipToNext() {
         if (_sessionState.value == SessionState.Playing || _sessionState.value == SessionState.Stopped) {
             adapter?.skipToNext()
+        }
+    }
+
+    /** Jumps position backward within the current Track by a fixed step, clamped at the Track start; a no-op while Finished/Closed. Not exposed to external MediaSession controllers — in-app UI only. */
+    fun seekBackward() {
+        if (_sessionState.value == SessionState.Playing || _sessionState.value == SessionState.Stopped) {
+            adapter?.seekBackward()
+        }
+    }
+
+    /** Jumps position forward within the current Track by a fixed step, clamped at the Track end; a no-op while Finished/Closed. Not exposed to external MediaSession controllers — in-app UI only. */
+    fun seekForward() {
+        if (_sessionState.value == SessionState.Playing || _sessionState.value == SessionState.Stopped) {
+            adapter?.seekForward()
         }
     }
 
