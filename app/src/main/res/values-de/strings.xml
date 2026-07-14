@@ -12,6 +12,7 @@
     <string name="button_decrement_1s">-1s</string>
     <string name="button_increment_1s">+1s</string>
 
+    <string name="label_pause_stop_interval_summary">Pause: %1$ds   Stop: %2$ds–%3$ds</string>
     <string name="label_stop_interval">Stop-Intervall: %1$ds–%2$ds</string>
     <string name="button_min_decrement">Min -1s</string>
     <string name="button_min_increment">Min +1s</string>

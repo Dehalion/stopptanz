@@ -53,6 +53,7 @@ import dev.stopptanz.app.session.PlaybackService
 import dev.stopptanz.app.session.SessionSettings
 import dev.stopptanz.app.settings.SettingsRepository
 import dev.stopptanz.app.ui.components.NeonCard
+import dev.stopptanz.app.ui.components.NeonCollapsibleCard
 import dev.stopptanz.app.ui.components.NeonLabel
 import dev.stopptanz.app.ui.components.NeonOutlineButton
 import dev.stopptanz.app.ui.components.NeonPrimaryButton
@@ -246,13 +247,14 @@ private fun SessionSection(
             )
         }
 
-        NeonCard(Modifier.padding(bottom = 14.dp)) {
+        NeonCollapsibleCard(
+            summaryText = pauseStopIntervalSummary(pauseDurationMillis, stopIntervalMinMillis, stopIntervalMaxMillis),
+            modifier = Modifier.padding(bottom = 14.dp),
+        ) {
             PauseDurationControls(pauseDurationMillis) { millis ->
                 scope.launch { sessionSettings.setPauseDurationMillis(millis) }
             }
-        }
-
-        NeonCard(Modifier.padding(bottom = 14.dp)) {
+            Spacer(Modifier.height(14.dp))
             StopIntervalControls(
                 stopIntervalMinMillis = stopIntervalMinMillis,
                 stopIntervalMaxMillis = stopIntervalMaxMillis,
@@ -332,14 +334,15 @@ private fun SessionSection(
         }
 
         if (sessionState == SessionState.Playing || sessionState == SessionState.Stopped) {
-            NeonCard(Modifier.padding(vertical = 14.dp)) {
+            NeonCollapsibleCard(
+                summaryText = pauseStopIntervalSummary(pauseDurationMillis, stopIntervalMinMillis, stopIntervalMaxMillis),
+                modifier = Modifier.padding(vertical = 14.dp),
+            ) {
                 PauseDurationControls(pauseDurationMillis) { millis ->
                     scope.launch { sessionSettings.setPauseDurationMillis(millis) }
                     activeService.setPauseDurationMillis(millis)
                 }
-            }
-
-            NeonCard {
+                Spacer(Modifier.height(14.dp))
                 StopIntervalControls(
                     stopIntervalMinMillis = stopIntervalMinMillis,
                     stopIntervalMaxMillis = stopIntervalMaxMillis,
@@ -549,6 +552,15 @@ private fun TrackRemaining.displayText(): String = when (this) {
     is TrackRemaining.Position -> stringResource(R.string.label_track_position, current, total)
     is TrackRemaining.Countdown -> pluralStringResource(R.plurals.label_tracks_remaining, remaining, remaining)
 }
+
+@Composable
+private fun pauseStopIntervalSummary(pauseDurationMillis: Int, stopIntervalMinMillis: Int, stopIntervalMaxMillis: Int): String =
+    stringResource(
+        R.string.label_pause_stop_interval_summary,
+        pauseDurationMillis / 1000,
+        stopIntervalMinMillis / 1000,
+        stopIntervalMaxMillis / 1000,
+    )
 
 @Composable
 private fun PauseDurationControls(pauseDurationMillis: Int, onChange: (Int) -> Unit) {

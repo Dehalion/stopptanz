@@ -2,6 +2,7 @@ package dev.stopptanz.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,6 +12,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -89,6 +94,26 @@ fun NeonCard(modifier: Modifier = Modifier, content: @Composable ColumnScope.() 
             .padding(18.dp),
         content = content,
     )
+}
+
+@Composable
+fun NeonCollapsibleCard(
+    summaryText: String,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    NeonCard(modifier) {
+        NeonValue(
+            summaryText,
+            Modifier.fillMaxWidth()
+                .clickable { expanded = !expanded }
+                .padding(bottom = if (expanded) 8.dp else 0.dp),
+        )
+        if (expanded) {
+            content()
+        }
+    }
 }
 
 @Composable
