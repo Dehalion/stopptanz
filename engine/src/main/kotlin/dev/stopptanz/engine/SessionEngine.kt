@@ -158,7 +158,12 @@ class SessionEngine(
     }
 
     fun close() {
-        check(state is SessionState.Playing || state is SessionState.Stopped || state is SessionState.Finished) {
+        check(
+            state is SessionState.Playing ||
+                state is SessionState.Stopped ||
+                state is SessionState.Finished ||
+                state is SessionState.Paused,
+        ) {
             "Cannot Close from $state"
         }
         state = SessionState.Closed

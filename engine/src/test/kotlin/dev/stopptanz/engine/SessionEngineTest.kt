@@ -136,6 +136,14 @@ class SessionEngineTest {
     }
 
     @Test
+    fun `close transitions from Paused to Closed`() {
+        val e = engine(Mode.FREEZE_DANCE)
+        e.pause()
+        e.close()
+        assertEquals(SessionState.Closed, e.state)
+    }
+
+    @Test
     fun `close transitions from Stopped to Closed`() {
         val e = engine(Mode.FREEZE_DANCE)
         e.stop()

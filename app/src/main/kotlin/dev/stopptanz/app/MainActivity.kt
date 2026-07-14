@@ -310,7 +310,22 @@ private fun SessionSection(
                 NeonLabel(stringResource(R.string.label_finished), Modifier.padding(vertical = 4.dp))
                 NeonPrimaryButton(stringResource(R.string.button_done), onClick = { activeService.acknowledgeFinished() })
             }
-            is SessionState.Paused, SessionState.Closed, null -> Unit
+            is SessionState.Paused -> Unit
+            SessionState.Closed, null -> Unit
+        }
+
+        if (sessionState == SessionState.Playing || sessionState == SessionState.Stopped) {
+            NeonOutlineButton(
+                stringResource(R.string.button_pause_session),
+                onClick = { activeService.pause() },
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        } else if (sessionState is SessionState.Paused) {
+            NeonPrimaryButton(
+                stringResource(R.string.button_resume_from_pause),
+                onClick = { activeService.resumeFromPause() },
+                modifier = Modifier.padding(top = 8.dp),
+            )
         }
 
         NeonOutlineButton(
@@ -344,7 +359,7 @@ private fun SessionSection(
             )
         }
 
-        if (sessionState == SessionState.Playing || sessionState == SessionState.Stopped) {
+        if (sessionState == SessionState.Playing || sessionState == SessionState.Stopped || sessionState is SessionState.Paused) {
             NeonCollapsibleCard(
                 summaryText = pauseStopIntervalSummary(pauseDurationMillis, stopIntervalMinMillis, stopIntervalMaxMillis),
                 modifier = Modifier.padding(vertical = 14.dp),
@@ -369,7 +384,7 @@ private fun SessionSection(
             }
         }
 
-        if (sessionState == SessionState.Playing || sessionState == SessionState.Stopped) {
+        if (sessionState == SessionState.Playing || sessionState == SessionState.Stopped || sessionState is SessionState.Paused) {
             trackStatus?.let {
                 TrackStatusDisplay(it, playbackPosition)
                 SkipControls(

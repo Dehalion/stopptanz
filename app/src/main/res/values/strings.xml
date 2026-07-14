@@ -62,6 +62,8 @@
     <string name="button_stop">Stop</string>
     <string name="button_resume">Resume</string>
     <string name="button_resume_countdown">Resume in %1$ds</string>
+    <string name="button_pause_session">Pause Game</string>
+    <string name="button_resume_from_pause">Resume Game</string>
     <string name="button_skip_previous">⏮</string>
     <string name="button_seek_backward">−10s</string>
     <string name="button_seek_forward">+10s</string>

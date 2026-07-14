@@ -37,6 +37,9 @@ class SessionPlaybackAdapter(
     private var positionTickerJob: Job? = null
     private var pauseCountdownJob: Job? = null
 
+    /** Latest freeze auto-resume countdown value pushed via [onPauseRemainingChanged]; captured by [pause] when pausing mid-countdown. */
+    private var currentPauseRemainingMillis: Long? = null
+
     init {
         player.repeatMode = if (engine.playlist.loop) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF
         player.addListener(object : Player.Listener {
@@ -93,6 +96,38 @@ class SessionPlaybackAdapter(
         scheduleAutoStop()
     }
 
+    /** Suspends the Session from Playing or Stopped, capturing any in-flight freeze auto-resume countdown so [resumeFromPause] can restore it exactly. */
+    fun pause() {
+        val remainingFreezeMillis = if (engine.state is SessionState.Stopped && engine.mode == Mode.FREEZE_DANCE) {
+            currentPauseRemainingMillis
+        } else {
+            null
+        }
+        autoStopJob?.cancel()
+        autoResumeJob?.cancel()
+        stopPositionTicker()
+        stopPauseCountdown()
+        player.pause()
+        engine.pause(remainingFreezeMillis)
+        onStateChanged(engine.state)
+    }
+
+    /** Restores whichever state was active before [pause]: resumes playback if it was Playing, or resumes the freeze countdown (with whatever time was remaining) if it was Stopped in Freeze Dance mode. */
+    fun resumeFromPause() {
+        val remainingFreezeMillis = engine.resumeFromPause()
+        when {
+            engine.state is SessionState.Playing -> {
+                player.play()
+                startPositionTicker()
+                scheduleAutoStop()
+            }
+            engine.state is SessionState.Stopped && engine.mode == Mode.FREEZE_DANCE -> {
+                scheduleAutoResumeWithRemaining(remainingFreezeMillis ?: engine.pauseDurationMillis)
+            }
+        }
+        onStateChanged(engine.state)
+    }
+
     /** Jumps to the previous Track without ending the Session; resets whichever pending timer (auto-stop or auto-resume) applies to the current state. */
     fun skipToPrevious() {
         engine.skipToPrevious()
@@ -138,10 +173,13 @@ class SessionPlaybackAdapter(
     }
 
     private fun scheduleAutoResume() {
-        val pauseDuration = engine.pauseDurationMillis
-        startPauseCountdown(pauseDuration)
+        scheduleAutoResumeWithRemaining(engine.pauseDurationMillis)
+    }
+
+    private fun scheduleAutoResumeWithRemaining(remainingMillis: Long) {
+        startPauseCountdown(remainingMillis)
         autoResumeJob = scope.launch {
-            delay(pauseDuration)
+            delay(remainingMillis)
             engine.onPauseElapsed()
             stopPauseCountdown()
             player.play()
@@ -154,10 +192,12 @@ class SessionPlaybackAdapter(
     private fun startPauseCountdown(totalMillis: Long) {
         pauseCountdownJob = scope.launch {
             var remaining = totalMillis
+            currentPauseRemainingMillis = remaining
             onPauseRemainingChanged(remaining)
             while (remaining > 0) {
                 delay(PAUSE_COUNTDOWN_TICK_MILLIS)
                 remaining = (remaining - PAUSE_COUNTDOWN_TICK_MILLIS).coerceAtLeast(0)
+                currentPauseRemainingMillis = remaining
                 onPauseRemainingChanged(remaining)
             }
         }
@@ -166,6 +206,7 @@ class SessionPlaybackAdapter(
     private fun stopPauseCountdown() {
         pauseCountdownJob?.cancel()
         pauseCountdownJob = null
+        currentPauseRemainingMillis = null
         onPauseRemainingChanged(null)
     }
 

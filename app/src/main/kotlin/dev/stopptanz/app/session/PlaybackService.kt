@@ -219,6 +219,20 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
+    /** Meta-Pause, distinct from Stop/Resume's freeze mechanic: suspends the Session from Playing or Stopped, resumable to exactly that state via [resumeFromPause]. */
+    fun pause() {
+        val state = _sessionState.value
+        if (state == SessionState.Playing || state == SessionState.Stopped) {
+            adapter?.pause()
+        }
+    }
+
+    fun resumeFromPause() {
+        if (_sessionState.value is SessionState.Paused) {
+            adapter?.resumeFromPause()
+        }
+    }
+
     /** Jumps to the previous Track in the Playlist; a no-op while Finished/Closed, matching stop()/resume()'s state guard. */
     fun skipToPrevious() {
         if (_sessionState.value == SessionState.Playing || _sessionState.value == SessionState.Stopped) {

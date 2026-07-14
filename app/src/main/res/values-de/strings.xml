@@ -30,6 +30,8 @@
     <string name="button_stop">Stopp</string>
     <string name="button_resume">Fortsetzen</string>
     <string name="button_resume_countdown">Fortsetzen in %1$ds</string>
+    <string name="button_pause_session">Spiel pausieren</string>
+    <string name="button_resume_from_pause">Spiel fortsetzen</string>
     <string name="button_skip_previous">⏮</string>
     <string name="button_seek_backward">−10s</string>
     <string name="button_seek_forward">+10s</string>
