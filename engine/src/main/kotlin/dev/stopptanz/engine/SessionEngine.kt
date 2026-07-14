@@ -132,6 +132,31 @@ class SessionEngine(
         state = SessionState.Playing
     }
 
+    /**
+     * Suspends the Session from [SessionState.Playing] or [SessionState.Stopped]; resumable to exactly that
+     * state via [resumeFromPause]. [remainingFreezeMillis] is required when pausing mid-countdown in
+     * [Mode.FREEZE_DANCE] (so the countdown can't be silently lost), and must be omitted otherwise.
+     */
+    fun pause(remainingFreezeMillis: Long? = null) {
+        val current = state
+        check(current is SessionState.Playing || current is SessionState.Stopped) { "Cannot Pause from $current" }
+        val pausingMidCountdown = current is SessionState.Stopped && mode == Mode.FREEZE_DANCE
+        if (pausingMidCountdown) {
+            checkNotNull(remainingFreezeMillis) { "remainingFreezeMillis is required when pausing mid-countdown in Freeze Dance mode" }
+        } else {
+            check(remainingFreezeMillis == null) { "remainingFreezeMillis only applies when pausing mid-countdown in Freeze Dance mode" }
+        }
+        state = SessionState.Paused(resumedState = current, remainingFreezeMillis = remainingFreezeMillis)
+    }
+
+    /** Restores whichever state was active before [pause]; returns the freeze countdown remaining at pause time, if any. */
+    fun resumeFromPause(): Long? {
+        val current = state
+        check(current is SessionState.Paused) { "Cannot Resume from Pause from $current" }
+        state = current.resumedState
+        return current.remainingFreezeMillis
+    }
+
     fun close() {
         check(state is SessionState.Playing || state is SessionState.Stopped || state is SessionState.Finished) {
             "Cannot Close from $state"

@@ -310,7 +310,7 @@ private fun SessionSection(
                 NeonLabel(stringResource(R.string.label_finished), Modifier.padding(vertical = 4.dp))
                 NeonPrimaryButton(stringResource(R.string.button_done), onClick = { activeService.acknowledgeFinished() })
             }
-            SessionState.Closed, null -> Unit
+            is SessionState.Paused, SessionState.Closed, null -> Unit
         }
 
         NeonOutlineButton(

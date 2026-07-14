@@ -180,7 +180,7 @@ class PlaybackService : MediaSessionService() {
             SessionState.Playing -> getString(R.string.notification_session_running, modeLabel)
             SessionState.Stopped -> getString(R.string.notification_session_stopped, modeLabel)
             SessionState.Finished -> getString(R.string.notification_session_finished, modeLabel)
-            SessionState.Closed, null -> getString(R.string.notification_session_running, modeLabel)
+            is SessionState.Paused, SessionState.Closed, null -> getString(R.string.notification_session_running, modeLabel)
         }
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))

@@ -44,6 +44,10 @@ _Avoid_: Song, file
 The Session state reached when the host explicitly ends a Session outright (End Session action), regardless of what state it was in beforehand. Distinct from Finished (natural Playlist end) and from a Stop (a pause within an ongoing Session) — Closed always returns the host to Playlist setup.
 _Avoid_: Ended, Stopped, Quit
 
+**Pause**:
+A host action suspending the whole Session — playback, and the freeze auto-resume countdown if one is in flight — resumable to exactly the state (Playing or Stopped) it was paused from. Distinct from a Stop: a Stop is a game event the mode reacts to, a Pause is a meta-level "hold everything" outside the game's own rules.
+_Avoid_: Stop, break
+
 **Skip**:
 A host action jumping to the previous or next Track in the Playlist immediately, without ending the Session. Resets the Stop Interval countdown (and the pause countdown, if currently Stopped in Freeze Dance). Bound by Loop for wrap-around at the Playlist ends.
 _Avoid_: Next/Previous, Advance

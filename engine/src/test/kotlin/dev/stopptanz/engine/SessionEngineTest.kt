@@ -342,4 +342,74 @@ class SessionEngineTest {
         assertEquals(false, e.canSkipPrevious)
         assertEquals(false, e.canSkipNext)
     }
+
+    @Test
+    fun `pause from Playing then resumeFromPause returns to Playing`() {
+        val e = engine(Mode.FREEZE_DANCE)
+        e.pause()
+        assertEquals(SessionState.Paused(SessionState.Playing), e.state)
+        val remaining = e.resumeFromPause()
+        assertEquals(SessionState.Playing, e.state)
+        assertEquals(null, remaining)
+    }
+
+    @Test
+    fun `pause from Stopped mid-countdown then resumeFromPause restores Stopped with remaining time`() {
+        val e = engine(Mode.FREEZE_DANCE)
+        e.stop()
+        e.pause(remainingFreezeMillis = 3_000)
+        assertEquals(SessionState.Paused(SessionState.Stopped, 3_000), e.state)
+        val remaining = e.resumeFromPause()
+        assertEquals(SessionState.Stopped, e.state)
+        assertEquals(3_000, remaining)
+    }
+
+    @Test
+    fun `onPauseElapsed rejects while Paused, so the freeze auto-resume timer cannot fire`() {
+        val e = engine(Mode.FREEZE_DANCE)
+        e.stop()
+        e.pause(remainingFreezeMillis = 3_000)
+        assertFailsWith<IllegalStateException> { e.onPauseElapsed() }
+    }
+
+    @Test
+    fun `pause rejects when not Playing or Stopped`() {
+        val playlist = Playlist(tracks = listOf(track("a")), loop = false)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        e.onPlaylistEnded()
+        assertFailsWith<IllegalStateException> { e.pause() }
+    }
+
+    @Test
+    fun `pause rejects when already Paused`() {
+        val e = engine(Mode.FREEZE_DANCE)
+        e.pause()
+        assertFailsWith<IllegalStateException> { e.pause() }
+    }
+
+    @Test
+    fun `resumeFromPause rejects when not Paused`() {
+        val e = engine(Mode.FREEZE_DANCE)
+        assertFailsWith<IllegalStateException> { e.resumeFromPause() }
+    }
+
+    @Test
+    fun `pause from Stopped in Freeze Dance mode requires remainingFreezeMillis so the countdown can't be silently lost`() {
+        val e = engine(Mode.FREEZE_DANCE)
+        e.stop()
+        assertFailsWith<IllegalStateException> { e.pause() }
+    }
+
+    @Test
+    fun `pause rejects remainingFreezeMillis when pausing from Playing`() {
+        val e = engine(Mode.FREEZE_DANCE)
+        assertFailsWith<IllegalStateException> { e.pause(remainingFreezeMillis = 3_000) }
+    }
+
+    @Test
+    fun `pause rejects remainingFreezeMillis when pausing from Stopped in Musical Chairs mode`() {
+        val e = engine(Mode.MUSICAL_CHAIRS)
+        e.stop()
+        assertFailsWith<IllegalStateException> { e.pause(remainingFreezeMillis = 3_000) }
+    }
 }
