@@ -185,6 +185,7 @@ private fun SessionSection(
     var sessionState by remember { mutableStateOf<SessionState?>(null) }
     var trackStatus by remember { mutableStateOf<TrackStatus?>(null) }
     var playbackPosition by remember { mutableStateOf<PlaybackPosition?>(null) }
+    var pauseRemainingMillis by remember { mutableStateOf<Long?>(null) }
     var boundService by remember { mutableStateOf<PlaybackService?>(null) }
     var serviceConnection by remember { mutableStateOf<ServiceConnection?>(null) }
     var activeSessionMode by remember { mutableStateOf(Mode.FREEZE_DANCE) }
@@ -205,6 +206,7 @@ private fun SessionSection(
                 scope.launch { service.currentMode.collect { it?.let { mode -> activeSessionMode = mode } } }
                 scope.launch { service.trackStatus.collect { trackStatus = it } }
                 scope.launch { service.playbackPosition.collect { playbackPosition = it } }
+                scope.launch { service.pauseRemainingMillis.collect { pauseRemainingMillis = it } }
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
@@ -293,8 +295,16 @@ private fun SessionSection(
     } else {
         when (sessionState) {
             SessionState.Playing -> NeonPrimaryButton(stringResource(R.string.button_stop), onClick = { activeService.stop() }, modifier = Modifier.padding(top = 8.dp))
-            SessionState.Stopped ->
-                NeonPrimaryButton(stringResource(R.string.button_resume), onClick = { activeService.resume() }, modifier = Modifier.padding(top = 8.dp))
+            SessionState.Stopped -> {
+                val remaining = pauseRemainingMillis
+                val resumeLabel = if (activeSessionMode == Mode.FREEZE_DANCE && remaining != null) {
+                    val remainingSeconds = ((remaining + 999) / 1000).toInt()
+                    stringResource(R.string.button_resume_countdown, remainingSeconds)
+                } else {
+                    stringResource(R.string.button_resume)
+                }
+                NeonPrimaryButton(resumeLabel, onClick = { activeService.resume() }, modifier = Modifier.padding(top = 8.dp))
+            }
             SessionState.Finished -> {
                 NeonLabel(stringResource(R.string.label_finished), Modifier.padding(vertical = 4.dp))
                 NeonPrimaryButton(stringResource(R.string.button_done), onClick = { activeService.acknowledgeFinished() })

@@ -29,6 +29,7 @@
     <string name="button_start_session">Sitzung starten</string>
     <string name="button_stop">Stopp</string>
     <string name="button_resume">Fortsetzen</string>
+    <string name="button_resume_countdown">Fortsetzen in %1$ds</string>
     <string name="label_finished">Abgeschlossen</string>
     <string name="button_done">Fertig</string>
     <string name="button_end_session">Sitzung beenden</string>

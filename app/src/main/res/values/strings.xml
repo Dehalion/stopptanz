@@ -61,6 +61,7 @@
     <string name="button_start_session">Start Session</string>
     <string name="button_stop">Stop</string>
     <string name="button_resume">Resume</string>
+    <string name="button_resume_countdown">Resume in %1$ds</string>
     <string name="label_finished">Finished</string>
     <string name="button_done">Done</string>
     <string name="button_end_session">End Session</string>

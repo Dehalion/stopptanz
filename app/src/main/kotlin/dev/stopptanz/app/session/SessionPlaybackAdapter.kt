@@ -15,6 +15,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private const val POSITION_POLL_INTERVAL_MILLIS = 500L
+private const val PAUSE_COUNTDOWN_TICK_MILLIS = 1_000L
 
 /**
  * Thin glue layer wrapping ExoPlayer, driven by [SessionEngine] state.
@@ -27,10 +28,12 @@ class SessionPlaybackAdapter(
     private val onStateChanged: (SessionState) -> Unit = {},
     private val onTrackChanged: (TrackStatus) -> Unit = {},
     private val onPositionChanged: (PlaybackPosition) -> Unit = {},
+    private val onPauseRemainingChanged: (Long?) -> Unit = {},
 ) {
     private var autoResumeJob: Job? = null
     private var autoStopJob: Job? = null
     private var positionTickerJob: Job? = null
+    private var pauseCountdownJob: Job? = null
 
     init {
         player.repeatMode = if (engine.playlist.loop) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF
@@ -74,9 +77,12 @@ class SessionPlaybackAdapter(
         stopPositionTicker()
         onStateChanged(engine.state)
         if (engine.mode == Mode.FREEZE_DANCE) {
+            val pauseDuration = engine.pauseDurationMillis
+            startPauseCountdown(pauseDuration)
             autoResumeJob = scope.launch {
-                delay(engine.pauseDurationMillis)
+                delay(pauseDuration)
                 engine.onPauseElapsed()
+                stopPauseCountdown()
                 player.play()
                 startPositionTicker()
                 onStateChanged(engine.state)
@@ -87,11 +93,30 @@ class SessionPlaybackAdapter(
 
     fun resume() {
         autoResumeJob?.cancel()
+        stopPauseCountdown()
         engine.resume()
         player.play()
         startPositionTicker()
         onStateChanged(engine.state)
         scheduleAutoStop()
+    }
+
+    private fun startPauseCountdown(totalMillis: Long) {
+        pauseCountdownJob = scope.launch {
+            var remaining = totalMillis
+            onPauseRemainingChanged(remaining)
+            while (remaining > 0) {
+                delay(PAUSE_COUNTDOWN_TICK_MILLIS)
+                remaining = (remaining - PAUSE_COUNTDOWN_TICK_MILLIS).coerceAtLeast(0)
+                onPauseRemainingChanged(remaining)
+            }
+        }
+    }
+
+    private fun stopPauseCountdown() {
+        pauseCountdownJob?.cancel()
+        pauseCountdownJob = null
+        onPauseRemainingChanged(null)
     }
 
     private fun startPositionTicker() {
@@ -127,6 +152,7 @@ class SessionPlaybackAdapter(
     fun cancelJobs() {
         autoResumeJob?.cancel()
         autoStopJob?.cancel()
+        stopPauseCountdown()
         stopPositionTicker()
     }
 

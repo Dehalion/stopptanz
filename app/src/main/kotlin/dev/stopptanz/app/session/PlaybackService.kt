@@ -65,6 +65,10 @@ class PlaybackService : MediaSessionService() {
     private val _playbackPosition = MutableStateFlow<PlaybackPosition?>(null)
     val playbackPosition: StateFlow<PlaybackPosition?> = _playbackPosition
 
+    private val _pauseRemainingMillis = MutableStateFlow<Long?>(null)
+    /** Remaining pause milliseconds while a Freeze Dance auto-resume job is pending; null otherwise. */
+    val pauseRemainingMillis: StateFlow<Long?> = _pauseRemainingMillis
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
@@ -142,6 +146,7 @@ class PlaybackService : MediaSessionService() {
             },
             onTrackChanged = { status -> _trackStatus.value = status },
             onPositionChanged = { position -> _playbackPosition.value = position },
+            onPauseRemainingChanged = { remaining -> _pauseRemainingMillis.value = remaining },
         ).also { it.start() }
 
         ServiceCompat.startForeground(
@@ -235,6 +240,7 @@ class PlaybackService : MediaSessionService() {
         _sessionState.value = null
         _trackStatus.value = null
         _playbackPosition.value = null
+        _pauseRemainingMillis.value = null
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
