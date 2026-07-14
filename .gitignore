@@ -15,3 +15,7 @@ captures/
 .tokensave
 .envrc
 
+# serve-apk.sh
+scripts/serve/
+scripts/.apk-build-counter
+
