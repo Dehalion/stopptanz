@@ -53,4 +53,43 @@
     <string name="notification_session_running">%1$s-Sitzung läuft</string>
     <string name="notification_session_stopped">%1$s-Sitzung gestoppt</string>
     <string name="notification_session_finished">%1$s-Sitzung abgeschlossen</string>
+
+    <string name="label_now_playing">Läuft gerade</string>
+    <string name="label_next_track_title">Nächster Titel</string>
+    <string name="label_next_track_placeholder">—</string>
+    <string name="label_missing_track">%1$s (fehlt)</string>
+    <string name="label_track_duration">%1$s / %2$s</string>
+    <string name="label_track_position">Titel %1$d von %2$d</string>
+    <plurals name="label_tracks_remaining">
+        <item quantity="one">%1$d Titel übrig</item>
+        <item quantity="other">%1$d Titel übrig</item>
+    </plurals>
+
+    <string name="label_review_tracks">Titel überprüfen</string>
+    <string name="button_move_up">↑</string>
+    <string name="button_move_down">↓</string>
+    <string name="button_remove_track">✕</string>
+    <string name="button_review_continue">Weiter</string>
+    <string name="button_raw_folder_scan">Ordner direkt einlesen</string>
+
+    <string name="label_choose_playlist_source">Musikquelle für \"%1$s\" wählen</string>
+    <string name="status_choose_playlist_source">Ordner \"%1$s\" enthält Playlist-Dateien. Wähle unten eine Quelle.</string>
+    <string name="status_playlist_file_empty">Playlist-Datei \"%1$s\" enthält keine Einträge.</string>
+    <plurals name="status_playlist_file_selected">
+        <item quantity="one">Playlist-Datei: %1$s (%2$d Titel)</item>
+        <item quantity="other">Playlist-Datei: %1$s (%2$d Titel)</item>
+    </plurals>
+
+    <string name="button_save_playlist_file">Als Playlist-Datei speichern</string>
+    <string name="dialog_save_playlist_title">Playlist-Datei speichern</string>
+    <string name="dialog_save_playlist_filename_label">Dateiname</string>
+    <string name="dialog_save_playlist_confirm">Speichern</string>
+    <string name="dialog_save_playlist_cancel">Abbrechen</string>
+    <string name="status_save_playlist_success">Als \"%1$s\" gespeichert.</string>
+    <string name="status_save_playlist_failed">Playlist-Datei konnte nicht gespeichert werden.</string>
+
+    <string name="dialog_overwrite_title">Datei überschreiben?</string>
+    <string name="dialog_overwrite_message">\"%1$s\" existiert bereits in diesem Ordner. Überschreiben?</string>
+    <string name="dialog_overwrite_confirm">Überschreiben</string>
+    <string name="dialog_overwrite_cancel">Abbrechen</string>
 </resources>
