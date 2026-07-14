@@ -58,7 +58,7 @@
     <string name="label_choose_playlist_source">Choose music source for \"%1$s\"</string>
     <string name="button_raw_folder_scan">Raw folder scan</string>
 
-    <string name="button_start_session">Start Session</string>
+    <string name="button_start_session">Start Game</string>
     <string name="button_stop">Stop</string>
     <string name="button_resume">Resume</string>
     <string name="button_resume_countdown">Resume in %1$ds</string>

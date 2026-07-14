@@ -233,6 +233,19 @@ private fun SessionSection(
             NeonOutlineButton(stringResource(R.string.pick_track), onClick = onPickTrack)
         }
 
+        Spacer(Modifier.height(8.dp))
+
+        NeonPrimaryButton(stringResource(R.string.button_start_session), onClick@{
+            val service = boundService ?: return@onClick
+            if (sessionState != null) return@onClick
+            activeSessionMode = mode
+            val sessionPlaylist = playlist.copy(shuffle = shuffle, loop = loop)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                requestNotificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+            service.startSession(sessionPlaylist, mode, pauseDurationMillis, stopIntervalMinMillis, stopIntervalMaxMillis)
+        })
+
         NeonLabel(stringResource(R.string.label_mode, mode.label()), Modifier.fillMaxWidth().padding(bottom = 8.dp))
         Row(Modifier.fillMaxWidth().padding(bottom = 14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             NeonOutlineButton(
@@ -280,18 +293,6 @@ private fun SessionSection(
             )
         }
 
-        Spacer(Modifier.height(8.dp))
-
-        NeonPrimaryButton(stringResource(R.string.button_start_session), onClick@{
-            val service = boundService ?: return@onClick
-            if (sessionState != null) return@onClick
-            activeSessionMode = mode
-            val sessionPlaylist = playlist.copy(shuffle = shuffle, loop = loop)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                requestNotificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-            }
-            service.startSession(sessionPlaylist, mode, pauseDurationMillis, stopIntervalMinMillis, stopIntervalMaxMillis)
-        })
     } else {
         when (sessionState) {
             SessionState.Playing -> NeonPrimaryButton(stringResource(R.string.button_stop), onClick = { activeService.stop() }, modifier = Modifier.padding(top = 8.dp))

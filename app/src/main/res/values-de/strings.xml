@@ -5,8 +5,8 @@
     <string name="pick_track">Titel auswählen</string>
 
     <string name="label_mode">Modus: %1$s</string>
-    <string name="mode_freeze_dance">Freeze Dance</string>
-    <string name="mode_musical_chairs">Musical Chairs</string>
+    <string name="mode_freeze_dance">Stopptanz</string>
+    <string name="mode_musical_chairs">Reise nach Jerusalem</string>
 
     <string name="label_pause">Pause: %1$ds</string>
     <string name="button_decrement_1s">-1s</string>
@@ -26,7 +26,7 @@
     <string name="toggle_state_on">An</string>
     <string name="toggle_state_off">Aus</string>
 
-    <string name="button_start_session">Sitzung starten</string>
+    <string name="button_start_session">Spiel starten</string>
     <string name="button_stop">Stopp</string>
     <string name="button_resume">Fortsetzen</string>
     <string name="button_resume_countdown">Fortsetzen in %1$ds</string>
