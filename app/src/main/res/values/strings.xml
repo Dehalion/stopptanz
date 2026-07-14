@@ -99,4 +99,5 @@
     <string name="notification_session_running">%1$s Session running</string>
     <string name="notification_session_stopped">%1$s Session stopped</string>
     <string name="notification_session_finished">%1$s Session finished</string>
+    <string name="notification_session_paused">%1$s Session paused</string>
 </resources>

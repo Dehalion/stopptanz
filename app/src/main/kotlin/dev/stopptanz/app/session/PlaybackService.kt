@@ -75,15 +75,25 @@ class PlaybackService : MediaSessionService() {
         player = ExoPlayer.Builder(this).build()
         // The system-rendered lock screen/notification Play-Pause control operates on the
         // MediaSession's player, not the notification's own actions. Routing it through
-        // stop()/resume() (rather than the wrapped player's raw play()/pause()) keeps every
-        // Stop/Resume in sync with SessionEngine, exactly like the in-app button.
+        // meta-Pause/resume (rather than the wrapped player's raw play()/pause(), or the
+        // in-app-only Stop/Resume freeze mechanic) keeps every system Play/Pause tap in sync
+        // with SessionEngine.
+        //
+        // Root cause of the previous dead system Play/Pause button: `pause()` below used to
+        // call an unqualified `stop()`, which Kotlin resolves to *this object's own*
+        // `override fun stop()` (a few lines down) rather than PlaybackService.stop() —
+        // member-scope resolution always prefers the innermost class over the outer one,
+        // regardless of declaration order. That override is a defense-in-depth no-op, so the
+        // system Pause tap silently did nothing instead of stopping playback. PlaybackService's
+        // meta-Pause is named pauseSession() (not pause()) specifically to keep it from ever
+        // colliding with this object's own overrides again.
         routedPlayer = object : ForwardingPlayer(player) {
             override fun play() {
-                resume()
+                this@PlaybackService.resumeFromPause()
             }
 
             override fun pause() {
-                stop()
+                this@PlaybackService.pauseSession()
             }
 
             // The raw transport COMMAND_STOP (distinct from our Stop/Resume business logic)
@@ -180,7 +190,8 @@ class PlaybackService : MediaSessionService() {
             SessionState.Playing -> getString(R.string.notification_session_running, modeLabel)
             SessionState.Stopped -> getString(R.string.notification_session_stopped, modeLabel)
             SessionState.Finished -> getString(R.string.notification_session_finished, modeLabel)
-            is SessionState.Paused, SessionState.Closed, null -> getString(R.string.notification_session_running, modeLabel)
+            is SessionState.Paused -> getString(R.string.notification_session_paused, modeLabel)
+            SessionState.Closed, null -> getString(R.string.notification_session_running, modeLabel)
         }
         return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
@@ -220,7 +231,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     /** Meta-Pause, distinct from Stop/Resume's freeze mechanic: suspends the Session from Playing or Stopped, resumable to exactly that state via [resumeFromPause]. */
-    fun pause() {
+    fun pauseSession() {
         val state = _sessionState.value
         if (state == SessionState.Playing || state == SessionState.Stopped) {
             adapter?.pause()

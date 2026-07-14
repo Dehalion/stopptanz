@@ -61,6 +61,7 @@
     <string name="notification_session_running">%1$s-Sitzung läuft</string>
     <string name="notification_session_stopped">%1$s-Sitzung gestoppt</string>
     <string name="notification_session_finished">%1$s-Sitzung abgeschlossen</string>
+    <string name="notification_session_paused">%1$s-Sitzung pausiert</string>
 
     <string name="label_now_playing">Läuft gerade</string>
     <string name="label_next_track_title">Nächster Titel</string>

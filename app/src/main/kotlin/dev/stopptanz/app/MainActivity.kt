@@ -317,7 +317,7 @@ private fun SessionSection(
         if (sessionState == SessionState.Playing || sessionState == SessionState.Stopped) {
             NeonOutlineButton(
                 stringResource(R.string.button_pause_session),
-                onClick = { activeService.pause() },
+                onClick = { activeService.pauseSession() },
                 modifier = Modifier.padding(top = 8.dp),
             )
         } else if (sessionState is SessionState.Paused) {
