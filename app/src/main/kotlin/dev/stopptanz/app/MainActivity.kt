@@ -174,10 +174,10 @@ private fun SessionSection(
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val pauseDurationMillis by sessionSettings.pauseDurationMillisFlow().collectAsState(initial = 5_000)
+    val pauseDurationMillis by sessionSettings.pauseDurationMillisFlow().collectAsState(initial = 4_000)
     val mode by sessionSettings.modeFlow().collectAsState(initial = Mode.FREEZE_DANCE)
-    val stopIntervalMinMillis by sessionSettings.stopIntervalMinMillisFlow().collectAsState(initial = 5_000)
-    val stopIntervalMaxMillis by sessionSettings.stopIntervalMaxMillisFlow().collectAsState(initial = 15_000)
+    val stopIntervalMinMillis by sessionSettings.stopIntervalMinMillisFlow().collectAsState(initial = 10_000)
+    val stopIntervalMaxMillis by sessionSettings.stopIntervalMaxMillisFlow().collectAsState(initial = 25_000)
     val shuffle by sessionSettings.shuffleFlow().collectAsState(initial = false)
     val loop by sessionSettings.loopFlow().collectAsState(initial = false)
 

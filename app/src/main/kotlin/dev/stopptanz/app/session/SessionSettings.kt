@@ -6,13 +6,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 private const val KEY_PAUSE_DURATION_MILLIS = "pause_duration_millis"
-private const val DEFAULT_PAUSE_DURATION_MILLIS = 5_000
+private const val DEFAULT_PAUSE_DURATION_MILLIS = 4_000
 private const val KEY_MODE = "mode"
 private val DEFAULT_MODE = Mode.FREEZE_DANCE
 private const val KEY_STOP_INTERVAL_MIN_MILLIS = "stop_interval_min_millis"
-private const val DEFAULT_STOP_INTERVAL_MIN_MILLIS = 5_000
+private const val DEFAULT_STOP_INTERVAL_MIN_MILLIS = 10_000
 private const val KEY_STOP_INTERVAL_MAX_MILLIS = "stop_interval_max_millis"
-private const val DEFAULT_STOP_INTERVAL_MAX_MILLIS = 15_000
+private const val DEFAULT_STOP_INTERVAL_MAX_MILLIS = 25_000
 private const val KEY_SHUFFLE = "shuffle"
 private const val KEY_LOOP = "loop"
 
