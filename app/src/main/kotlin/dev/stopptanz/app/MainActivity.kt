@@ -43,6 +43,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.stopptanz.app.playlist.PlaylistRepository
 import dev.stopptanz.app.playlist.PlaylistSelectionState
+import dev.stopptanz.app.playlist.ScannedFile
 import dev.stopptanz.app.playlist.SelectionKind
 import dev.stopptanz.app.playlist.TrackReview
 import dev.stopptanz.app.session.PlaybackPosition
@@ -94,6 +95,15 @@ fun StopptanzApp(playlistRepository: PlaylistRepository, sessionSettings: Sessio
         }
     }
 
+    val onPickRawFolderScan: (String) -> Unit = { folderUriString ->
+        reviewedPlaylist = null
+        scope.launch { state = playlistRepository.chooseRawFolderScan(folderUriString) }
+    }
+    val onPickPlaylistFile: (String, ScannedFile) -> Unit = { folderUriString, file ->
+        reviewedPlaylist = null
+        scope.launch { state = playlistRepository.choosePlaylistFile(folderUriString, file) }
+    }
+
     val pickTrack = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) {
             state = PlaylistSelectionState.PickerCancelled
@@ -116,16 +126,25 @@ fun StopptanzApp(playlistRepository: PlaylistRepository, sessionSettings: Sessio
                 NeonTitle(stringResource(R.string.app_name), Modifier.fillMaxWidth().padding(bottom = 4.dp))
                 NeonSubtext(state.statusText(), Modifier.padding(bottom = 20.dp))
 
+                val folderChoice = state as? PlaylistSelectionState.FolderChoice
                 val selected = state as? PlaylistSelectionState.Selected
-                if (selected != null) {
-                    val needsReview = selected.kind == SelectionKind.FOLDER && reviewedPlaylist == null
+                val reviewGatedKinds = setOf(SelectionKind.FOLDER, SelectionKind.PLAYLIST_FILE)
+                if (folderChoice != null) {
+                    PlaylistFileChoiceScreen(
+                        folderName = folderChoice.folderName,
+                        playlistFiles = folderChoice.playlistFiles,
+                        onPickRawFolderScan = { onPickRawFolderScan(folderChoice.folderUriString) },
+                        onPickPlaylistFile = { file -> onPickPlaylistFile(folderChoice.folderUriString, file) },
+                    )
+                } else if (selected != null) {
+                    val needsReview = selected.kind in reviewGatedKinds && reviewedPlaylist == null
                     if (needsReview) {
                         PlaylistReviewScreen(
                             tracks = selected.playlist.tracks,
-                            onConfirm = { edited -> reviewedPlaylist = selected.playlist.copy(tracks = edited) },
+                            onConfirm = { edited -> reviewedPlaylist = selected.playlist.copy(tracks = edited.filter { !it.missing }) },
                         )
                     } else {
-                        val playlistToShow = if (selected.kind == SelectionKind.FOLDER) requireNotNull(reviewedPlaylist) else selected.playlist
+                        val playlistToShow = if (selected.kind in reviewGatedKinds) requireNotNull(reviewedPlaylist) else selected.playlist
                         SessionSection(
                             playlistToShow,
                             sessionSettings,
@@ -345,6 +364,26 @@ private fun SessionSection(
 }
 
 @Composable
+private fun PlaylistFileChoiceScreen(
+    folderName: String,
+    playlistFiles: List<ScannedFile>,
+    onPickRawFolderScan: () -> Unit,
+    onPickPlaylistFile: (ScannedFile) -> Unit,
+) {
+    NeonCard(Modifier.padding(bottom = 14.dp)) {
+        NeonLabel(stringResource(R.string.label_choose_playlist_source, folderName), Modifier.padding(bottom = 8.dp))
+        NeonOutlineButton(
+            stringResource(R.string.button_raw_folder_scan),
+            onClick = onPickRawFolderScan,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+        playlistFiles.forEach { file ->
+            NeonOutlineButton(file.displayName, onClick = { onPickPlaylistFile(file) }, modifier = Modifier.padding(bottom = 8.dp))
+        }
+    }
+}
+
+@Composable
 private fun PlaylistReviewScreen(tracks: List<Track>, onConfirm: (List<Track>) -> Unit) {
     var editedTracks by remember(tracks) { mutableStateOf(tracks) }
 
@@ -353,8 +392,9 @@ private fun PlaylistReviewScreen(tracks: List<Track>, onConfirm: (List<Track>) -
         editedTracks.forEachIndexed { index, track ->
             TrackReviewRow(
                 name = track.name,
-                canMoveUp = index > 0,
-                canMoveDown = index < editedTracks.lastIndex,
+                missing = track.missing,
+                canMoveUp = !track.missing && index > 0,
+                canMoveDown = !track.missing && index < editedTracks.lastIndex,
                 onMoveUp = { editedTracks = TrackReview.moveUp(editedTracks, index) },
                 onMoveDown = { editedTracks = TrackReview.moveDown(editedTracks, index) },
                 onRemove = { editedTracks = TrackReview.remove(editedTracks, index) },
@@ -365,13 +405,14 @@ private fun PlaylistReviewScreen(tracks: List<Track>, onConfirm: (List<Track>) -
     NeonPrimaryButton(
         stringResource(R.string.button_review_continue),
         onClick = { onConfirm(editedTracks) },
-        enabled = editedTracks.isNotEmpty(),
+        enabled = editedTracks.any { !it.missing },
     )
 }
 
 @Composable
 private fun TrackReviewRow(
     name: String,
+    missing: Boolean,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
     onMoveUp: () -> Unit,
@@ -379,9 +420,15 @@ private fun TrackReviewRow(
     onRemove: () -> Unit,
 ) {
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        NeonValue(name, Modifier.weight(1f))
-        TextButton(onClick = onMoveUp, enabled = canMoveUp) { Text(stringResource(R.string.button_move_up)) }
-        TextButton(onClick = onMoveDown, enabled = canMoveDown) { Text(stringResource(R.string.button_move_down)) }
+        if (missing) {
+            NeonSubtext(stringResource(R.string.label_missing_track, name), Modifier.weight(1f))
+        } else {
+            NeonValue(name, Modifier.weight(1f))
+        }
+        if (!missing) {
+            TextButton(onClick = onMoveUp, enabled = canMoveUp) { Text(stringResource(R.string.button_move_up)) }
+            TextButton(onClick = onMoveDown, enabled = canMoveDown) { Text(stringResource(R.string.button_move_down)) }
+        }
         TextButton(onClick = onRemove) { Text(stringResource(R.string.button_remove_track)) }
     }
 }
@@ -459,6 +506,7 @@ private fun PlaylistSelectionState.statusText(): String = when (this) {
         when (kind) {
             SelectionKind.FOLDER -> stringResource(R.string.status_folder_inaccessible, displayName)
             SelectionKind.TRACK -> stringResource(R.string.status_track_inaccessible, displayName)
+            SelectionKind.PLAYLIST_FILE -> stringResource(R.string.status_folder_inaccessible, displayName)
         }
     } else {
         stringResource(R.string.status_access_needed)
@@ -466,6 +514,7 @@ private fun PlaylistSelectionState.statusText(): String = when (this) {
     is PlaylistSelectionState.Empty -> when (kind) {
         SelectionKind.FOLDER -> stringResource(R.string.status_folder_empty, displayName)
         SelectionKind.TRACK -> stringResource(R.string.status_track_empty, displayName)
+        SelectionKind.PLAYLIST_FILE -> stringResource(R.string.status_playlist_file_empty, displayName)
     }
     is PlaylistSelectionState.Selected -> when (kind) {
         SelectionKind.FOLDER -> pluralStringResource(
@@ -475,5 +524,12 @@ private fun PlaylistSelectionState.statusText(): String = when (this) {
             playlist.tracks.size,
         )
         SelectionKind.TRACK -> stringResource(R.string.status_track_selected, displayName)
+        SelectionKind.PLAYLIST_FILE -> pluralStringResource(
+            R.plurals.status_playlist_file_selected,
+            playlist.tracks.size,
+            displayName,
+            playlist.tracks.size,
+        )
     }
+    is PlaylistSelectionState.FolderChoice -> stringResource(R.string.status_choose_playlist_source, folderName)
 }

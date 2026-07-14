@@ -5,12 +5,15 @@ import android.content.Intent
 import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import dev.stopptanz.app.settings.SettingsRepository
+import dev.stopptanz.engine.Playlist
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 
-// Name kept for back-compat with pre-existing persisted folder URIs; now stores either kind.
+// Name kept for back-compat with pre-existing persisted folder URIs; now stores the folder URI for
+// PLAYLIST_FILE selections too (the Playlist File itself lives under KEY_LAST_PLAYLIST_FILE_URI).
 private const val KEY_LAST_URI = "last_picked_folder_uri"
 private const val KEY_LAST_KIND = "last_picked_kind"
+private const val KEY_LAST_PLAYLIST_FILE_URI = "last_picked_playlist_file_uri"
 
 class PlaylistRepository(private val context: Context, private val settings: SettingsRepository) {
 
@@ -29,16 +32,49 @@ class PlaylistRepository(private val context: Context, private val settings: Set
         return when (kind) {
             SelectionKind.FOLDER -> scanFolder(uri)
             SelectionKind.TRACK -> scanTrack(uri)
+            SelectionKind.PLAYLIST_FILE -> {
+                val playlistFileUri = settings.stringFlow(KEY_LAST_PLAYLIST_FILE_URI, "").first()
+                scanPlaylistFile(uri, playlistFileUri)
+            }
         }
     }
 
-    /** Takes persistable access to a freshly picked folder, persists it, and scans it. */
+    /**
+     * Takes persistable access to a freshly picked folder. If it contains `.m3u` files, defers to a
+     * [PlaylistSelectionState.FolderChoice] so the user can pick raw scan vs. a Playlist File; otherwise
+     * persists and scans it directly (today's behavior).
+     */
     suspend fun selectFolder(uri: Uri): PlaylistSelectionState {
         if (!takePersistablePermission(uri)) return PlaylistSelectionState.PermissionUnavailable(null, SelectionKind.FOLDER)
+
+        val root = DocumentFile.fromTreeUri(context, uri)
+        if (root == null || !root.isDirectory) {
+            return PlaylistSelectionState.PermissionUnavailable(root?.name ?: uri.lastPathSegment, SelectionKind.FOLDER)
+        }
+        val folderName = root.name ?: uri.lastPathSegment ?: uri.toString()
+        val playlistFiles = root.listFiles().map { it.toScannedFile() }.filter(PlaylistFileParser::isPlaylistFile)
+        if (playlistFiles.isNotEmpty()) {
+            return PlaylistSelectionState.FolderChoice(uri.toString(), folderName, playlistFiles)
+        }
 
         settings.setString(KEY_LAST_URI, uri.toString())
         settings.setString(KEY_LAST_KIND, SelectionKind.FOLDER.name)
         return scanFolder(uri)
+    }
+
+    /** Picks "Raw folder scan" from a [PlaylistSelectionState.FolderChoice]. */
+    suspend fun chooseRawFolderScan(folderUriString: String): PlaylistSelectionState {
+        settings.setString(KEY_LAST_URI, folderUriString)
+        settings.setString(KEY_LAST_KIND, SelectionKind.FOLDER.name)
+        return scanFolder(Uri.parse(folderUriString))
+    }
+
+    /** Picks a `.m3u` file from a [PlaylistSelectionState.FolderChoice]. */
+    suspend fun choosePlaylistFile(folderUriString: String, playlistFile: ScannedFile): PlaylistSelectionState {
+        settings.setString(KEY_LAST_URI, folderUriString)
+        settings.setString(KEY_LAST_KIND, SelectionKind.PLAYLIST_FILE.name)
+        settings.setString(KEY_LAST_PLAYLIST_FILE_URI, playlistFile.uriString)
+        return scanPlaylistFile(Uri.parse(folderUriString), playlistFile.uriString)
     }
 
     /** Takes persistable access to a freshly picked single Track, persists it, and loads it. */
@@ -67,14 +103,7 @@ class PlaylistRepository(private val context: Context, private val settings: Set
         }
 
         val folderName = root.name ?: uri.lastPathSegment ?: uri.toString()
-        val entries = root.listFiles().map {
-            ScannedFile(
-                uriString = it.uri.toString(),
-                displayName = it.name ?: "",
-                mimeType = it.type,
-                isDirectory = it.isDirectory,
-            )
-        }
+        val entries = root.listFiles().map { it.toScannedFile() }
         val playlist = PlaylistBuilder.build(entries)
         return if (playlist == null) {
             PlaylistSelectionState.Empty(folderName, SelectionKind.FOLDER)
@@ -82,6 +111,47 @@ class PlaylistRepository(private val context: Context, private val settings: Set
             PlaylistSelectionState.Selected(folderName, playlist, SelectionKind.FOLDER)
         }
     }
+
+    /**
+     * Parses the `.m3u` at [playlistFileUriString] and resolves its entries against [folderUri]'s contents.
+     * If the Playlist File itself no longer resolves (deleted/moved), falls back to the folder's
+     * [PlaylistSelectionState.FolderChoice] rather than a raw scan.
+     */
+    private suspend fun scanPlaylistFile(folderUri: Uri, playlistFileUriString: String): PlaylistSelectionState {
+        val root = DocumentFile.fromTreeUri(context, folderUri)
+        if (root == null || !root.isDirectory) {
+            return PlaylistSelectionState.PermissionUnavailable(root?.name ?: folderUri.lastPathSegment, SelectionKind.PLAYLIST_FILE)
+        }
+        val folderName = root.name ?: folderUri.lastPathSegment ?: folderUri.toString()
+        val folderFiles = root.listFiles().map { it.toScannedFile() }
+
+        val playlistDoc = playlistFileUriString.takeIf { it.isNotBlank() }?.let { DocumentFile.fromSingleUri(context, Uri.parse(it)) }
+        if (playlistDoc == null || !playlistDoc.isFile) {
+            val playlistFiles = folderFiles.filter(PlaylistFileParser::isPlaylistFile)
+            if (playlistFiles.isEmpty()) {
+                settings.setString(KEY_LAST_URI, folderUri.toString())
+                settings.setString(KEY_LAST_KIND, SelectionKind.FOLDER.name)
+                return scanFolder(folderUri)
+            }
+            return PlaylistSelectionState.FolderChoice(folderUri.toString(), folderName, playlistFiles)
+        }
+
+        val playlistFileName = playlistDoc.name ?: playlistFileUriString
+        val content = context.contentResolver.openInputStream(playlistDoc.uri)?.bufferedReader()?.use { it.readText() } ?: ""
+        val tracks = PlaylistFileParser.resolve(PlaylistFileParser.parseFilenames(content), folderFiles)
+        return if (tracks.isEmpty()) {
+            PlaylistSelectionState.Empty(playlistFileName, SelectionKind.PLAYLIST_FILE)
+        } else {
+            PlaylistSelectionState.Selected(playlistFileName, Playlist(tracks = tracks), SelectionKind.PLAYLIST_FILE)
+        }
+    }
+
+    private fun DocumentFile.toScannedFile() = ScannedFile(
+        uriString = uri.toString(),
+        displayName = name ?: "",
+        mimeType = type,
+        isDirectory = isDirectory,
+    )
 
     private fun scanTrack(uri: Uri): PlaylistSelectionState {
         val doc = DocumentFile.fromSingleUri(context, uri)

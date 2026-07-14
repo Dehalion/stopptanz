@@ -2,7 +2,8 @@ package dev.stopptanz.app.playlist
 
 enum class SelectionKind {
     FOLDER,
-    TRACK;
+    TRACK,
+    PLAYLIST_FILE;
 
     companion object {
         /** Blank or unrecognized values default to FOLDER so pre-existing persisted folder URIs keep loading. */

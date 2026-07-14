@@ -16,6 +16,11 @@ class SelectionKindTest {
     }
 
     @Test
+    fun `parses PLAYLIST_FILE`() {
+        assertEquals(SelectionKind.PLAYLIST_FILE, SelectionKind.fromStored("PLAYLIST_FILE"))
+    }
+
+    @Test
     fun `blank value defaults to FOLDER for pre-existing persisted selections`() {
         assertEquals(SelectionKind.FOLDER, SelectionKind.fromStored(""))
     }

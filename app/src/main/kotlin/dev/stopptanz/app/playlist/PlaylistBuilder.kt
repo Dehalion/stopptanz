@@ -8,7 +8,10 @@ data class ScannedFile(
     val displayName: String,
     val mimeType: String?,
     val isDirectory: Boolean,
-)
+) {
+    /** Track display name: [displayName] with its extension stripped, per the Track domain rule. */
+    val trackName: String get() = displayName.substringBeforeLast('.', displayName)
+}
 
 object PlaylistBuilder {
 
@@ -22,9 +25,7 @@ object PlaylistBuilder {
     }
 
     fun build(files: List<ScannedFile>): Playlist? {
-        val tracks = files.filter(::isAudioFile).map {
-            Track(uri = it.uriString, name = it.displayName.substringBeforeLast('.', it.displayName))
-        }
+        val tracks = files.filter(::isAudioFile).map { Track(uri = it.uriString, name = it.trackName) }
         return if (tracks.isEmpty()) null else Playlist(tracks = tracks)
     }
 }

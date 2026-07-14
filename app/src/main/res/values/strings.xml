@@ -40,6 +40,10 @@
     <string name="button_move_up">↑</string>
     <string name="button_move_down">↓</string>
     <string name="button_remove_track">✕</string>
+    <string name="label_missing_track">%1$s (missing)</string>
+
+    <string name="label_choose_playlist_source">Choose music source for \"%1$s\"</string>
+    <string name="button_raw_folder_scan">Raw folder scan</string>
 
     <string name="button_start_session">Start Session</string>
     <string name="button_stop">Stop</string>
@@ -59,11 +63,17 @@
     <string name="status_track_inaccessible">Track \"%1$s\" is no longer accessible. Please pick it again.</string>
     <string name="status_folder_empty">Folder \"%1$s\" has no audio files.</string>
     <string name="status_track_empty">\"%1$s\" isn\'t a supported audio file.</string>
+    <string name="status_playlist_file_empty">Playlist File \"%1$s\" has no entries.</string>
+    <string name="status_choose_playlist_source">Folder \"%1$s\" contains Playlist Files. Pick a source below.</string>
     <plurals name="status_folder_selected">
         <item quantity="one">Folder: %1$s (%2$d track)</item>
         <item quantity="other">Folder: %1$s (%2$d tracks)</item>
     </plurals>
     <string name="status_track_selected">Track: %1$s</string>
+    <plurals name="status_playlist_file_selected">
+        <item quantity="one">Playlist File: %1$s (%2$d track)</item>
+        <item quantity="other">Playlist File: %1$s (%2$d tracks)</item>
+    </plurals>
 
     <string name="notification_channel_playback">Playback</string>
     <string name="notification_session_running">%1$s Session running</string>
