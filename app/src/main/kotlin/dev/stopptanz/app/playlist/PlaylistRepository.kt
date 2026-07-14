@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.documentfile.provider.DocumentFile
 import dev.stopptanz.app.settings.SettingsRepository
 import dev.stopptanz.engine.Playlist
+import dev.stopptanz.engine.Track
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 
@@ -108,7 +109,7 @@ class PlaylistRepository(private val context: Context, private val settings: Set
         return if (playlist == null) {
             PlaylistSelectionState.Empty(folderName, SelectionKind.FOLDER)
         } else {
-            PlaylistSelectionState.Selected(folderName, playlist, SelectionKind.FOLDER)
+            PlaylistSelectionState.Selected(folderName, playlist, SelectionKind.FOLDER, folderUriString = uri.toString())
         }
     }
 
@@ -142,7 +143,43 @@ class PlaylistRepository(private val context: Context, private val settings: Set
         return if (tracks.isEmpty()) {
             PlaylistSelectionState.Empty(playlistFileName, SelectionKind.PLAYLIST_FILE)
         } else {
-            PlaylistSelectionState.Selected(playlistFileName, Playlist(tracks = tracks), SelectionKind.PLAYLIST_FILE)
+            PlaylistSelectionState.Selected(
+                playlistFileName,
+                Playlist(tracks = tracks),
+                SelectionKind.PLAYLIST_FILE,
+                folderUriString = folderUri.toString(),
+            )
+        }
+    }
+
+    /**
+     * Writes [tracks] (already excluding missing rows) as a minimal `.m3u` into the folder at
+     * [folderUriString], under [filename] (`.m3u` appended if absent). Does not touch persisted
+     * selection state — this is a side-effect export, not a new selection (#22).
+     */
+    suspend fun savePlaylistFile(
+        folderUriString: String,
+        filename: String,
+        tracks: List<Track>,
+        overwrite: Boolean,
+    ): PlaylistSaveResult {
+        val root = DocumentFile.fromTreeUri(context, Uri.parse(folderUriString))
+        if (root == null || !root.isDirectory) return PlaylistSaveResult.Failed
+
+        val normalizedName = PlaylistFileWriter.normalizeFilename(filename)
+        val existing = root.listFiles().firstOrNull { it.name.equals(normalizedName, ignoreCase = true) }
+        if (existing != null && !overwrite) return PlaylistSaveResult.AlreadyExists(normalizedName)
+
+        return try {
+            existing?.delete()
+            val doc = root.createFile("application/octet-stream", normalizedName) ?: return PlaylistSaveResult.Failed
+            val filenames = tracks.mapNotNull { DocumentFile.fromSingleUri(context, Uri.parse(it.uri))?.name }
+            context.contentResolver.openOutputStream(doc.uri)?.use { out ->
+                out.write(PlaylistFileWriter.format(filenames).toByteArray())
+            }
+            PlaylistSaveResult.Saved(normalizedName)
+        } catch (e: Exception) {
+            PlaylistSaveResult.Failed
         }
     }
 
@@ -168,4 +205,11 @@ class PlaylistRepository(private val context: Context, private val settings: Set
             PlaylistSelectionState.Selected(trackName, playlist, SelectionKind.TRACK)
         }
     }
+}
+
+/** Result of [PlaylistRepository.savePlaylistFile]. */
+sealed interface PlaylistSaveResult {
+    data class Saved(val filename: String) : PlaylistSaveResult
+    data class AlreadyExists(val filename: String) : PlaylistSaveResult
+    object Failed : PlaylistSaveResult
 }

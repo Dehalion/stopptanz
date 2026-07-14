@@ -42,6 +42,18 @@
     <string name="button_remove_track">✕</string>
     <string name="label_missing_track">%1$s (missing)</string>
 
+    <string name="button_save_playlist_file">Save as Playlist File</string>
+    <string name="dialog_save_playlist_title">Save Playlist File</string>
+    <string name="dialog_save_playlist_filename_label">Filename</string>
+    <string name="dialog_save_playlist_confirm">Save</string>
+    <string name="dialog_save_playlist_cancel">Cancel</string>
+    <string name="dialog_overwrite_title">Overwrite file?</string>
+    <string name="dialog_overwrite_message">\"%1$s\" already exists in this folder. Overwrite it?</string>
+    <string name="dialog_overwrite_confirm">Overwrite</string>
+    <string name="dialog_overwrite_cancel">Cancel</string>
+    <string name="status_save_playlist_success">Saved as \"%1$s\".</string>
+    <string name="status_save_playlist_failed">Couldn\'t save Playlist File.</string>
+
     <string name="label_choose_playlist_source">Choose music source for \"%1$s\"</string>
     <string name="button_raw_folder_scan">Raw folder scan</string>
 

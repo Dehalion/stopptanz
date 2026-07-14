@@ -26,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -42,6 +43,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import dev.stopptanz.app.playlist.PlaylistRepository
+import dev.stopptanz.app.playlist.PlaylistSaveResult
 import dev.stopptanz.app.playlist.PlaylistSelectionState
 import dev.stopptanz.app.playlist.ScannedFile
 import dev.stopptanz.app.playlist.SelectionKind
@@ -141,6 +143,8 @@ fun StopptanzApp(playlistRepository: PlaylistRepository, sessionSettings: Sessio
                     if (needsReview) {
                         PlaylistReviewScreen(
                             tracks = selected.playlist.tracks,
+                            folderUriString = selected.folderUriString,
+                            repository = playlistRepository,
                             onConfirm = { edited -> reviewedPlaylist = selected.playlist.copy(tracks = edited.filter { !it.missing }) },
                         )
                     } else {
@@ -384,8 +388,19 @@ private fun PlaylistFileChoiceScreen(
 }
 
 @Composable
-private fun PlaylistReviewScreen(tracks: List<Track>, onConfirm: (List<Track>) -> Unit) {
+private fun PlaylistReviewScreen(
+    tracks: List<Track>,
+    folderUriString: String?,
+    repository: PlaylistRepository,
+    onConfirm: (List<Track>) -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var editedTracks by remember(tracks) { mutableStateOf(tracks) }
+    var showSaveDialog by remember { mutableStateOf(false) }
+    var filenameInput by remember { mutableStateOf("") }
+    var pendingOverwriteFilename by remember { mutableStateOf<String?>(null) }
+    var saveMessage by remember { mutableStateOf<String?>(null) }
 
     NeonCard(Modifier.padding(bottom = 14.dp)) {
         NeonLabel(stringResource(R.string.label_review_tracks), Modifier.padding(bottom = 8.dp))
@@ -406,7 +421,81 @@ private fun PlaylistReviewScreen(tracks: List<Track>, onConfirm: (List<Track>) -
         stringResource(R.string.button_review_continue),
         onClick = { onConfirm(editedTracks) },
         enabled = editedTracks.any { !it.missing },
+        modifier = Modifier.padding(bottom = 8.dp),
     )
+
+    val folderUri = folderUriString
+    if (folderUri != null && editedTracks.any { !it.missing }) {
+        NeonOutlineButton(
+            stringResource(R.string.button_save_playlist_file),
+            onClick = {
+                filenameInput = ""
+                saveMessage = null
+                showSaveDialog = true
+            },
+        )
+        saveMessage?.let { NeonSubtext(it, Modifier.padding(top = 8.dp)) }
+
+        if (showSaveDialog) {
+            AlertDialog(
+                onDismissRequest = { showSaveDialog = false },
+                title = { Text(stringResource(R.string.dialog_save_playlist_title)) },
+                text = {
+                    TextField(
+                        value = filenameInput,
+                        onValueChange = { filenameInput = it },
+                        label = { Text(stringResource(R.string.dialog_save_playlist_filename_label)) },
+                    )
+                },
+                confirmButton = {
+                    TextButton(
+                        enabled = filenameInput.isNotBlank(),
+                        onClick = {
+                            showSaveDialog = false
+                            val toSave = editedTracks.filter { !it.missing }
+                            val name = filenameInput
+                            scope.launch {
+                                when (val result = repository.savePlaylistFile(folderUri, name, toSave, overwrite = false)) {
+                                    is PlaylistSaveResult.Saved ->
+                                        saveMessage = context.getString(R.string.status_save_playlist_success, result.filename)
+                                    is PlaylistSaveResult.AlreadyExists -> pendingOverwriteFilename = result.filename
+                                    PlaylistSaveResult.Failed ->
+                                        saveMessage = context.getString(R.string.status_save_playlist_failed)
+                                }
+                            }
+                        },
+                    ) { Text(stringResource(R.string.dialog_save_playlist_confirm)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSaveDialog = false }) { Text(stringResource(R.string.dialog_save_playlist_cancel)) }
+                },
+            )
+        }
+
+        val overwriteFilename = pendingOverwriteFilename
+        if (overwriteFilename != null) {
+            AlertDialog(
+                onDismissRequest = { pendingOverwriteFilename = null },
+                title = { Text(stringResource(R.string.dialog_overwrite_title)) },
+                text = { Text(stringResource(R.string.dialog_overwrite_message, overwriteFilename)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        pendingOverwriteFilename = null
+                        val toSave = editedTracks.filter { !it.missing }
+                        scope.launch {
+                            saveMessage = when (val result = repository.savePlaylistFile(folderUri, overwriteFilename, toSave, overwrite = true)) {
+                                is PlaylistSaveResult.Saved -> context.getString(R.string.status_save_playlist_success, result.filename)
+                                else -> context.getString(R.string.status_save_playlist_failed)
+                            }
+                        }
+                    }) { Text(stringResource(R.string.dialog_overwrite_confirm)) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { pendingOverwriteFilename = null }) { Text(stringResource(R.string.dialog_overwrite_cancel)) }
+                },
+            )
+        }
+    }
 }
 
 @Composable
