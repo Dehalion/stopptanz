@@ -37,7 +37,16 @@ class SessionEngine(
         }
 
     /** Current Track, next Track, and remaining count, bundled for the adapter/UI to observe together. */
-    val trackStatus: TrackStatus get() = TrackStatus(currentTrack, nextTrack, remainingTracks)
+    val trackStatus: TrackStatus
+        get() = TrackStatus(currentTrack, nextTrack, remainingTracks, canSkipPrevious, canSkipNext)
+
+    /** Whether [skipToPrevious] would move [currentTrackIndex]: false at the first Track unless Loop is on, and always false with a single Track. */
+    val canSkipPrevious: Boolean
+        get() = orderedTracks.size > 1 && (playlist.loop || currentTrackIndex > 0)
+
+    /** Whether [skipToNext] would move [currentTrackIndex]: false at the last Track unless Loop is on, and always false with a single Track. */
+    val canSkipNext: Boolean
+        get() = orderedTracks.size > 1 && (playlist.loop || currentTrackIndex < orderedTracks.size - 1)
 
     /** Called by the playback adapter each time ExoPlayer moves on to the next Track. */
     fun onTrackAdvanced() {
@@ -92,6 +101,28 @@ class SessionEngine(
     fun resume() {
         check(state is SessionState.Stopped) { "Cannot Resume from $state" }
         state = SessionState.Playing
+    }
+
+    /** Host-driven jump to the previous Track; wraps when Loop is on, a no-op at the first Track otherwise. Leaves [state] unchanged. */
+    fun skipToPrevious() {
+        check(state is SessionState.Playing || state is SessionState.Stopped) { "Cannot Skip from $state" }
+        val previous = currentTrackIndex - 1
+        currentTrackIndex = if (playlist.loop) {
+            (previous + orderedTracks.size) % orderedTracks.size
+        } else {
+            previous.coerceAtLeast(0)
+        }
+    }
+
+    /** Host-driven jump to the next Track; wraps when Loop is on, a no-op at the last Track otherwise. Leaves [state] unchanged. */
+    fun skipToNext() {
+        check(state is SessionState.Playing || state is SessionState.Stopped) { "Cannot Skip from $state" }
+        val next = currentTrackIndex + 1
+        currentTrackIndex = if (playlist.loop) {
+            next % orderedTracks.size
+        } else {
+            next.coerceAtMost(orderedTracks.size - 1)
+        }
     }
 
     /** Called by the playback adapter once [pauseDurationMillis] has elapsed since a Stop. */

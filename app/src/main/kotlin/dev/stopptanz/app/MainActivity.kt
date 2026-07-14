@@ -369,7 +369,10 @@ private fun SessionSection(
         }
 
         if (sessionState == SessionState.Playing || sessionState == SessionState.Stopped) {
-            trackStatus?.let { TrackStatusDisplay(it, playbackPosition) }
+            trackStatus?.let {
+                TrackStatusDisplay(it, playbackPosition)
+                SkipControls(it, onSkipPrevious = { activeService.skipToPrevious() }, onSkipNext = { activeService.skipToNext() })
+            }
         }
     }
 
@@ -554,6 +557,24 @@ private fun TrackStatusDisplay(trackStatus: TrackStatus, playbackPosition: Playb
             Modifier.padding(bottom = 8.dp),
         )
         NeonSubtext(trackStatus.remaining.displayText())
+    }
+}
+
+@Composable
+private fun SkipControls(trackStatus: TrackStatus, onSkipPrevious: () -> Unit, onSkipNext: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        NeonOutlineButton(
+            stringResource(R.string.button_skip_previous),
+            onClick = onSkipPrevious,
+            modifier = Modifier.weight(1f),
+            enabled = trackStatus.canSkipPrevious,
+        )
+        NeonOutlineButton(
+            stringResource(R.string.button_skip_next),
+            onClick = onSkipNext,
+            modifier = Modifier.weight(1f),
+            enabled = trackStatus.canSkipNext,
+        )
     }
 }
 

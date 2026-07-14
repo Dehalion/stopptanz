@@ -43,3 +43,7 @@ _Avoid_: Song, file
 **Closed**:
 The Session state reached when the host explicitly ends a Session outright (End Session action), regardless of what state it was in beforehand. Distinct from Finished (natural Playlist end) and from a Stop (a pause within an ongoing Session) — Closed always returns the host to Playlist setup.
 _Avoid_: Ended, Stopped, Quit
+
+**Skip**:
+A host action jumping to the previous or next Track in the Playlist immediately, without ending the Session. Resets the Stop Interval countdown (and the pause countdown, if currently Stopped in Freeze Dance). Bound by Loop for wrap-around at the Playlist ends.
+_Avoid_: Next/Previous, Advance

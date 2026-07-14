@@ -77,17 +77,7 @@ class SessionPlaybackAdapter(
         stopPositionTicker()
         onStateChanged(engine.state)
         if (engine.mode == Mode.FREEZE_DANCE) {
-            val pauseDuration = engine.pauseDurationMillis
-            startPauseCountdown(pauseDuration)
-            autoResumeJob = scope.launch {
-                delay(pauseDuration)
-                engine.onPauseElapsed()
-                stopPauseCountdown()
-                player.play()
-                startPositionTicker()
-                onStateChanged(engine.state)
-                scheduleAutoStop()
-            }
+            scheduleAutoResume()
         }
     }
 
@@ -99,6 +89,47 @@ class SessionPlaybackAdapter(
         startPositionTicker()
         onStateChanged(engine.state)
         scheduleAutoStop()
+    }
+
+    /** Jumps to the previous Track without ending the Session; resets whichever pending timer (auto-stop or auto-resume) applies to the current state. */
+    fun skipToPrevious() {
+        engine.skipToPrevious()
+        seekToCurrentTrackAndRescheduleTimers()
+    }
+
+    /** Jumps to the next Track without ending the Session; resets whichever pending timer (auto-stop or auto-resume) applies to the current state. */
+    fun skipToNext() {
+        engine.skipToNext()
+        seekToCurrentTrackAndRescheduleTimers()
+    }
+
+    private fun seekToCurrentTrackAndRescheduleTimers() {
+        player.seekTo(engine.currentTrackIndex, 0)
+        onTrackChanged(engine.trackStatus)
+        when {
+            engine.state is SessionState.Playing -> {
+                autoStopJob?.cancel()
+                scheduleAutoStop()
+            }
+            engine.state is SessionState.Stopped && engine.mode == Mode.FREEZE_DANCE -> {
+                autoResumeJob?.cancel()
+                scheduleAutoResume()
+            }
+        }
+    }
+
+    private fun scheduleAutoResume() {
+        val pauseDuration = engine.pauseDurationMillis
+        startPauseCountdown(pauseDuration)
+        autoResumeJob = scope.launch {
+            delay(pauseDuration)
+            engine.onPauseElapsed()
+            stopPauseCountdown()
+            player.play()
+            startPositionTicker()
+            onStateChanged(engine.state)
+            scheduleAutoStop()
+        }
     }
 
     private fun startPauseCountdown(totalMillis: Long) {

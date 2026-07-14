@@ -141,7 +141,7 @@ fun NeonAccentButton(text: String, onClick: () -> Unit, modifier: Modifier = Mod
 }
 
 @Composable
-fun NeonOutlineButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, active: Boolean = false) {
+fun NeonOutlineButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, active: Boolean = false, enabled: Boolean = true) {
     if (active) {
         NeonAccentButton(text, onClick, modifier)
         return
@@ -152,6 +152,7 @@ fun NeonOutlineButton(text: String, onClick: () -> Unit, modifier: Modifier = Mo
         colors = ButtonDefaults.buttonColors(containerColor = NeonCardFill, contentColor = NeonTextPrimary),
         shape = RoundedCornerShape(16.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, NeonCardBorder),
+        enabled = enabled,
     ) {
         Text(text, fontWeight = FontWeight.SemiBold)
     }

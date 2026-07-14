@@ -234,4 +234,112 @@ class SessionEngineTest {
         e.onTrackAdvanced()
         assertEquals(TrackRemaining.Position(2, 3), e.remainingTracks)
     }
+
+    @Test
+    fun `skipToNext moves currentTrack forward`() {
+        val playlist = Playlist(tracks = listOf(track("a"), track("b"), track("c")))
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        e.skipToNext()
+        assertEquals(track("b"), e.currentTrack)
+    }
+
+    @Test
+    fun `skipToPrevious moves currentTrack backward`() {
+        val playlist = Playlist(tracks = listOf(track("a"), track("b"), track("c")))
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        e.skipToNext()
+        e.skipToPrevious()
+        assertEquals(track("a"), e.currentTrack)
+    }
+
+    @Test
+    fun `skipToNext is a no-op at the last orderedTrack when loop is off`() {
+        val playlist = Playlist(tracks = listOf(track("a"), track("b")), loop = false)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        e.skipToNext()
+        e.skipToNext()
+        assertEquals(track("b"), e.currentTrack)
+    }
+
+    @Test
+    fun `skipToPrevious is a no-op at the first orderedTrack when loop is off`() {
+        val playlist = Playlist(tracks = listOf(track("a"), track("b")), loop = false)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        e.skipToPrevious()
+        assertEquals(track("a"), e.currentTrack)
+    }
+
+    @Test
+    fun `skipToNext wraps to the first orderedTrack when looping`() {
+        val playlist = Playlist(tracks = listOf(track("a"), track("b")), loop = true)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        e.skipToNext()
+        e.skipToNext()
+        assertEquals(track("a"), e.currentTrack)
+    }
+
+    @Test
+    fun `skipToPrevious wraps to the last orderedTrack when looping`() {
+        val playlist = Playlist(tracks = listOf(track("a"), track("b")), loop = true)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        e.skipToPrevious()
+        assertEquals(track("b"), e.currentTrack)
+    }
+
+    @Test
+    fun `skipToNext and skipToPrevious leave state unchanged`() {
+        val playlist = Playlist(tracks = listOf(track("a"), track("b"), track("c")))
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        e.skipToNext()
+        assertEquals(SessionState.Playing, e.state)
+        e.stop()
+        e.skipToPrevious()
+        assertEquals(SessionState.Stopped, e.state)
+    }
+
+    @Test
+    fun `skipToNext and skipToPrevious work while Stopped`() {
+        val playlist = Playlist(tracks = listOf(track("a"), track("b"), track("c")))
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        e.stop()
+        e.skipToNext()
+        assertEquals(track("b"), e.currentTrack)
+    }
+
+    @Test
+    fun `skipToNext and skipToPrevious reject when not Playing or Stopped`() {
+        val playlist = Playlist(tracks = listOf(track("a")), loop = false)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        e.onPlaylistEnded()
+        assertFailsWith<IllegalStateException> { e.skipToNext() }
+        assertFailsWith<IllegalStateException> { e.skipToPrevious() }
+    }
+
+    @Test
+    fun `canSkipPrevious and canSkipNext are false at the ends when loop is off`() {
+        val playlist = Playlist(tracks = listOf(track("a"), track("b"), track("c")), loop = false)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        assertEquals(false, e.canSkipPrevious)
+        assertEquals(true, e.canSkipNext)
+        e.skipToNext()
+        e.skipToNext()
+        assertEquals(true, e.canSkipPrevious)
+        assertEquals(false, e.canSkipNext)
+    }
+
+    @Test
+    fun `canSkipPrevious and canSkipNext are true at the ends when loop is on`() {
+        val playlist = Playlist(tracks = listOf(track("a"), track("b"), track("c")), loop = true)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        assertEquals(true, e.canSkipPrevious)
+        assertEquals(true, e.canSkipNext)
+    }
+
+    @Test
+    fun `canSkipPrevious and canSkipNext are false with a single Track regardless of loop`() {
+        val playlist = Playlist(tracks = listOf(track("a")), loop = true)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        assertEquals(false, e.canSkipPrevious)
+        assertEquals(false, e.canSkipNext)
+    }
 }

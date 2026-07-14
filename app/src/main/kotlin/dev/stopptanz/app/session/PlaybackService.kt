@@ -211,6 +211,20 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
+    /** Jumps to the previous Track in the Playlist; a no-op while Finished/Closed, matching stop()/resume()'s state guard. */
+    fun skipToPrevious() {
+        if (_sessionState.value == SessionState.Playing || _sessionState.value == SessionState.Stopped) {
+            adapter?.skipToPrevious()
+        }
+    }
+
+    /** Jumps to the next Track in the Playlist; a no-op while Finished/Closed, matching stop()/resume()'s state guard. */
+    fun skipToNext() {
+        if (_sessionState.value == SessionState.Playing || _sessionState.value == SessionState.Stopped) {
+            adapter?.skipToNext()
+        }
+    }
+
     /** Live-adjusts the Stop Interval for the in-progress Session; applies from the next Stop cycle onward. */
     fun setStopInterval(minMillis: Int, maxMillis: Int) {
         adapter?.setStopInterval(StopInterval(minMillis.toLong(), maxMillis.toLong()))

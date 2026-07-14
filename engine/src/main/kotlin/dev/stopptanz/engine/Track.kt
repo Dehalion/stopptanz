@@ -10,4 +10,10 @@ sealed class TrackRemaining {
     data class Countdown(val remaining: Int) : TrackRemaining()
 }
 
-data class TrackStatus(val current: Track, val next: Track?, val remaining: TrackRemaining)
+data class TrackStatus(
+    val current: Track,
+    val next: Track?,
+    val remaining: TrackRemaining,
+    val canSkipPrevious: Boolean,
+    val canSkipNext: Boolean,
+)
