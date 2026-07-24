@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "dev.stopptanz.app"
+    namespace = "com.stopptanz.app"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "dev.stopptanz.app"
+        applicationId = "com.stopptanz.app"
         minSdk = 26
         targetSdk = 34
         versionCode = 3
