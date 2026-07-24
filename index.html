@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stopptanz</title>
+<meta name="description" content="An Android app that plays your music and randomly stops it to drive a stop-dance party game — Freeze Dance or Musical Chairs.">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="hero">
+  <img class="hero__icon" src="assets/icon.png" width="112" height="112" alt="Stopptanz app icon">
+  <h1 class="hero__title">Stopptanz</h1>
+  <p class="hero__tagline">Plays your music. Stops it at random. You dance until it does.</p>
+
+  <div class="timer-motif" aria-hidden="true">
+    <span class="timer-motif__elapsed">0:11</span>
+    <span class="timer-motif__sep">/</span>
+    <span class="timer-motif__total">0:30</span>
+  </div>
+
+  <a class="btn" href="https://github.com/Dehalion/stopptanz">View on GitHub</a>
+</header>
+
+<main>
+  <section class="shots" aria-label="Screenshots">
+    <img src="docs/images/01-home.png" width="200" alt="Setup screen with a playlist loaded">
+    <img src="docs/images/04-session-active.png" width="200" alt="A session in progress">
+    <img src="docs/images/02-freeze-paused.png" width="200" alt="Freeze Dance's pause countdown">
+    <img src="docs/images/03-notification-controls.png" width="200" alt="Playback controls in the system notification">
+  </section>
+
+  <section class="features">
+    <div class="card">
+      <h2 class="card__title">Freeze Dance</h2>
+      <p class="card__body">Music stops at a random point, then resumes on its own after a short pause. Resume early any time.</p>
+    </div>
+    <div class="card">
+      <h2 class="card__title">Musical Chairs</h2>
+      <p class="card__body">Music stops at a random point and stays stopped until you resume it — no auto-resume.</p>
+    </div>
+    <div class="card">
+      <h2 class="card__title">Fully offline</h2>
+      <p class="card__body">No network access, no analytics, no ads, no accounts. Your music never leaves your device.</p>
+    </div>
+    <div class="card">
+      <h2 class="card__title">Open source</h2>
+      <p class="card__body">Licensed GPL-3.0-or-later. Read the code, build it yourself, or send a pull request.</p>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <a href="https://github.com/Dehalion/stopptanz">GitHub</a>
+  <span class="footer__dot">·</span>
+  <a href="https://github.com/Dehalion/stopptanz/blob/main/LICENSE">License</a>
+  <span class="footer__dot">·</span>
+  <a href="https://github.com/Dehalion/stopptanz/blob/main/PRIVACY.md">Privacy</a>
+</footer>
+
+</body>
+</html>
