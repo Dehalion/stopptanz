@@ -2,6 +2,13 @@ import type { SessionEngine } from '../engine/sessionEngine'
 import type { SessionState } from '../engine/sessionState'
 import type { StopInterval } from '../engine/stopInterval'
 
+/** Indirection so TS re-widens `engine.state`'s type after a mutating call, instead of keeping it
+ * narrowed from an earlier guard — a known TS limitation with control-flow narrowing through
+ * getter chains across statements. */
+function currentState(engine: SessionEngine): SessionState {
+  return engine.state
+}
+
 export interface TimerHandle {
   cancel(): void
 }
@@ -43,7 +50,10 @@ export class SessionOrchestrator {
     this.scheduleAutoStop()
   }
 
+  /** No-ops outside Playing, guarding against a stale/racy external command (e.g. a lock-screen
+   * control) rather than requiring every caller to check state first. */
   stop(): void {
+    if (this.engine.state.kind !== 'playing') return
     this.autoStopHandle?.cancel()
     this.performStop()
   }
@@ -57,7 +67,9 @@ export class SessionOrchestrator {
     }
   }
 
+  /** No-ops outside Stopped, guarding against a stale/racy external command. */
   resume(): void {
+    if (this.engine.state.kind !== 'stopped') return
     this.autoResumeHandle?.cancel()
     this.clearPauseRemaining()
     this.engine.resume()
@@ -66,8 +78,10 @@ export class SessionOrchestrator {
     this.scheduleAutoStop()
   }
 
-  /** Suspends the Session, capturing any in-flight freeze auto-resume countdown so `resumeFromPause` restores it exactly. */
+  /** Suspends the Session, capturing any in-flight freeze auto-resume countdown so `resumeFromPause`
+   * restores it exactly. No-ops outside Playing/Stopped, guarding against a stale/racy external command. */
   pause(): void {
+    if (this.engine.state.kind !== 'playing' && this.engine.state.kind !== 'stopped') return
     const remainingFreezeMillis =
       this.engine.state.kind === 'stopped' && this.engine.mode === 'FREEZE_DANCE' ? this.pauseRemainingMillis : null
     this.autoStopHandle?.cancel()
@@ -78,15 +92,18 @@ export class SessionOrchestrator {
     this.callbacks.onStateChanged?.(this.engine.state)
   }
 
+  /** No-ops outside Paused, guarding against a stale/racy external command. */
   resumeFromPause(): void {
+    if (this.engine.state.kind !== 'paused') return
     const remainingFreezeMillis = this.engine.resumeFromPause()
-    if (this.engine.state.kind === 'playing') {
+    const newState = currentState(this.engine)
+    if (newState.kind === 'playing') {
       this.io.playAudio()
       this.scheduleAutoStop()
-    } else if (this.engine.state.kind === 'stopped' && this.engine.mode === 'FREEZE_DANCE') {
+    } else if (newState.kind === 'stopped' && this.engine.mode === 'FREEZE_DANCE') {
       this.scheduleAutoResumeWithRemaining(remainingFreezeMillis ?? this.engine.pauseDurationMillis)
     }
-    this.callbacks.onStateChanged?.(this.engine.state)
+    this.callbacks.onStateChanged?.(newState)
   }
 
   /** Called once the current Track has naturally ended (audio `ended` event). */

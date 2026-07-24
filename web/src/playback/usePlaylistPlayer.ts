@@ -167,12 +167,8 @@ export function usePlaylistPlayer(): PlaylistPlayer {
   // command can't call into the engine outside the state it expects.
   useEffect(() => {
     setActionHandlers({
-      play: () => {
-        if (sessionState?.kind === 'paused') orchestratorRef.current?.resumeFromPause()
-      },
-      pause: () => {
-        if (sessionState?.kind === 'playing' || sessionState?.kind === 'stopped') orchestratorRef.current?.pause()
-      },
+      play: () => orchestratorRef.current?.resumeFromPause(),
+      pause: () => orchestratorRef.current?.pause(),
       previoustrack: skipToPrevious,
       nexttrack: skipToNext,
     })
