@@ -22,3 +22,5 @@ scripts/.apk-build-counter
 # scratch screenshots/mockups, not part of the source tree
 screenshots/
 
+scripts/forgejo/
+.claude/skills/forgejo-ops/
