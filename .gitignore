@@ -15,6 +15,10 @@ captures/
 .tokensave
 .envrc
 
+# Web app
+web/node_modules/
+web/dist/
+
 # serve-apk.sh
 scripts/serve/
 scripts/.apk-build-counter
