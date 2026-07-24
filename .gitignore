@@ -19,3 +19,6 @@ captures/
 scripts/serve/
 scripts/.apk-build-counter
 
+# scratch screenshots/mockups, not part of the source tree
+screenshots/
+
