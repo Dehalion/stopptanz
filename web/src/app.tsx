@@ -15,6 +15,14 @@ import {
   saveStopIntervalMinSeconds,
 } from './settings/sessionSettings'
 
+const STATE_LABEL: Record<string, string> = {
+  playing: 'Playing',
+  stopped: 'Freeze!',
+  paused: 'Paused',
+  finished: 'Finished',
+  closed: 'Closed',
+}
+
 export function App() {
   const player = usePlaylistPlayer()
   const initialSettings = loadSessionSettings()
@@ -88,144 +96,176 @@ export function App() {
 
   return (
     <main>
-      <h1>Stopptanz</h1>
+      <h1 class="app__title">Stopptanz</h1>
 
-      <input type="file" accept="audio/*" multiple onChange={onFilesSelected} />
+      <label class="picker">
+        <span class="picker__icon" aria-hidden="true">🎵</span>
+        <span class="picker__label">{reviewTracks ? 'Choose different music' : 'Choose your music'}</span>
+        <p class="picker__hint">Select one or more audio files from your device</p>
+        <input type="file" accept="audio/*" multiple onChange={onFilesSelected} />
+      </label>
 
-      <label>
-        <input
-          type="checkbox"
-          checked={shuffle}
-          onChange={(e) => onShuffleChange((e.target as HTMLInputElement).checked)}
-        />
-        Shuffle
-      </label>
-      <label>
-        <input type="checkbox" checked={loop} onChange={(e) => onLoopChange((e.target as HTMLInputElement).checked)} />
-        Loop
-      </label>
+      <div class="toggle-row">
+        <label class="toggle">
+          <input
+            type="checkbox"
+            checked={shuffle}
+            onChange={(e) => onShuffleChange((e.target as HTMLInputElement).checked)}
+          />
+          Shuffle
+        </label>
+        <label class="toggle">
+          <input type="checkbox" checked={loop} onChange={(e) => onLoopChange((e.target as HTMLInputElement).checked)} />
+          Loop
+        </label>
+      </div>
 
       <fieldset>
-        <legend>Mode</legend>
-        <label>
-          <input type="radio" name="mode" checked={mode === 'FREEZE_DANCE'} onChange={() => onModeChange('FREEZE_DANCE')} />
-          Freeze Dance
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="mode"
-            checked={mode === 'MUSICAL_CHAIRS'}
-            onChange={() => onModeChange('MUSICAL_CHAIRS')}
-          />
-          Musical Chairs
-        </label>
+        <legend class="section__title">Mode</legend>
+        <div class="mode-row">
+          <label class="mode">
+            <input type="radio" name="mode" checked={mode === 'FREEZE_DANCE'} onChange={() => onModeChange('FREEZE_DANCE')} />
+            <span class="mode__name">Freeze Dance</span>
+            <span class="mode__hint">Auto-resumes after a pause</span>
+          </label>
+          <label class="mode">
+            <input
+              type="radio"
+              name="mode"
+              checked={mode === 'MUSICAL_CHAIRS'}
+              onChange={() => onModeChange('MUSICAL_CHAIRS')}
+            />
+            <span class="mode__name">Musical Chairs</span>
+            <span class="mode__hint">Stays stopped until you resume</span>
+          </label>
+        </div>
       </fieldset>
 
-      <label>
-        Stop interval min (s)
-        <input
-          type="number"
-          min={0}
-          value={stopMinSeconds}
-          onInput={(e) => onStopMinChange(Number((e.target as HTMLInputElement).value))}
-        />
-      </label>
-      <label>
-        Stop interval max (s)
-        <input
-          type="number"
-          min={stopMinSeconds}
-          value={stopMaxSeconds}
-          onInput={(e) => onStopMaxChange(Number((e.target as HTMLInputElement).value))}
-        />
-      </label>
-      {mode === 'FREEZE_DANCE' && (
-        <label>
-          Freeze pause (s)
+      <div class="field-row">
+        <label class="field">
+          Stop interval min (s)
           <input
             type="number"
             min={0}
-            value={pauseDurationSeconds}
-            onInput={(e) => setPauseDurationSeconds(Number((e.target as HTMLInputElement).value))}
+            value={stopMinSeconds}
+            onInput={(e) => onStopMinChange(Number((e.target as HTMLInputElement).value))}
           />
         </label>
-      )}
+        <label class="field">
+          Stop interval max (s)
+          <input
+            type="number"
+            min={stopMinSeconds}
+            value={stopMaxSeconds}
+            onInput={(e) => onStopMaxChange(Number((e.target as HTMLInputElement).value))}
+          />
+        </label>
+        {mode === 'FREEZE_DANCE' && (
+          <label class="field">
+            Freeze pause (s)
+            <input
+              type="number"
+              min={0}
+              value={pauseDurationSeconds}
+              onInput={(e) => setPauseDurationSeconds(Number((e.target as HTMLInputElement).value))}
+            />
+          </label>
+        )}
+      </div>
+      {!stopIntervalValid && <p class="field-error">Stop interval max must be at least min.</p>}
 
       {reviewTracks && (
-        <section>
-          <h2>Playlist</h2>
-          <ol>
+        <section class="section">
+          <h2 class="section__title">Playlist</h2>
+          <ol class="playlist">
             {reviewTracks.map((track, index) => (
-              <li key={track.uri}>
-                {track.name}
-                <button type="button" onClick={() => setReviewTracks(moveUp(reviewTracks, index))} disabled={index === 0}>
-                  Up
+              <li class="playlist__item" key={track.uri}>
+                <span class="playlist__name">{track.name}</span>
+                <button
+                  type="button"
+                  class="icon-btn"
+                  aria-label="Move up"
+                  onClick={() => setReviewTracks(moveUp(reviewTracks, index))}
+                  disabled={index === 0}
+                >
+                  ↑
                 </button>
                 <button
                   type="button"
+                  class="icon-btn"
+                  aria-label="Move down"
                   onClick={() => setReviewTracks(moveDown(reviewTracks, index))}
                   disabled={index === reviewTracks.length - 1}
                 >
-                  Down
+                  ↓
                 </button>
-                <button type="button" onClick={() => setReviewTracks(remove(reviewTracks, index))}>
-                  Remove
+                <button
+                  type="button"
+                  class="icon-btn icon-btn--danger"
+                  aria-label="Remove"
+                  onClick={() => setReviewTracks(remove(reviewTracks, index))}
+                >
+                  ✕
                 </button>
               </li>
             ))}
           </ol>
-          <button type="button" onClick={startPlayback} disabled={reviewTracks.length === 0 || !stopIntervalValid}>
+          <button type="button" class="btn btn--block" onClick={startPlayback} disabled={reviewTracks.length === 0 || !stopIntervalValid}>
             Play
           </button>
-          {!stopIntervalValid && <p>Stop interval max must be at least min.</p>}
         </section>
       )}
 
       {player.currentTrack && state && (
-        <section>
-          <p>{player.currentTrack.name}</p>
-          <p>
+        <section class="now-playing">
+          <p class="now-playing__track">{player.currentTrack.name}</p>
+          <p class="now-playing__time">
             {formatCurrent(position)} / {formatTotal(position)}
           </p>
-          <p>Session: {state.kind}</p>
-          {player.pauseRemainingMillis !== null && <p>Resuming in {Math.ceil(player.pauseRemainingMillis / 1000)}s</p>}
 
-          <button type="button" onClick={player.skipToPrevious} disabled={!player.canSkipPrevious}>
-            Previous
-          </button>
-          <button type="button" onClick={player.seekBack}>
-            -10s
-          </button>
-          <button type="button" onClick={player.seekForward}>
-            +10s
-          </button>
-          <button type="button" onClick={player.skipToNext} disabled={!player.canSkipNext}>
-            Next
-          </button>
+          <span class={`state-badge state-badge--${state.kind}`}>{STATE_LABEL[state.kind] ?? state.kind}</span>
+          {player.pauseRemainingMillis !== null && (
+            <p class="resume-countdown">Resuming in {Math.ceil(player.pauseRemainingMillis / 1000)}s</p>
+          )}
+          {state.kind === 'finished' && <p class="finished-note">Playlist finished — nice moves.</p>}
 
-          {state.kind === 'playing' && (
-            <button type="button" onClick={player.stop}>
-              Stop
+          <div class="transport">
+            <button type="button" class="icon-btn" aria-label="Previous track" onClick={player.skipToPrevious} disabled={!player.canSkipPrevious}>
+              ⏮
             </button>
-          )}
-          {state.kind === 'stopped' && (
-            <button type="button" onClick={player.resume}>
-              Resume
+            <button type="button" class="icon-btn" aria-label="Seek back 10 seconds" onClick={player.seekBack}>
+              −10s
             </button>
-          )}
-          {(state.kind === 'playing' || state.kind === 'stopped') && (
-            <button type="button" onClick={player.pause}>
-              Pause
+            <button type="button" class="icon-btn" aria-label="Seek forward 10 seconds" onClick={player.seekForward}>
+              +10s
             </button>
-          )}
-          {state.kind === 'paused' && (
-            <button type="button" onClick={player.resumeFromPause}>
-              Resume from Pause
+            <button type="button" class="icon-btn" aria-label="Next track" onClick={player.skipToNext} disabled={!player.canSkipNext}>
+              ⏭
             </button>
-          )}
+          </div>
 
-          {state.kind === 'finished' && <p>Playlist finished.</p>}
+          <div class="primary-action">
+            {state.kind === 'playing' && (
+              <button type="button" class="btn btn--block" onClick={player.stop}>
+                Stop
+              </button>
+            )}
+            {state.kind === 'stopped' && (
+              <button type="button" class="btn btn--block" onClick={player.resume}>
+                Resume
+              </button>
+            )}
+            {(state.kind === 'playing' || state.kind === 'stopped') && (
+              <button type="button" class="btn btn--block btn--ghost" onClick={player.pause}>
+                Pause
+              </button>
+            )}
+            {state.kind === 'paused' && (
+              <button type="button" class="btn btn--block" onClick={player.resumeFromPause}>
+                Resume from Pause
+              </button>
+            )}
+          </div>
         </section>
       )}
     </main>
