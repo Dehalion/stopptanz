@@ -27,7 +27,26 @@ class SessionEngineTest {
     @Test
     fun `next stop delay is within configured interval bounds`() {
         val delay = engine(Mode.FREEZE_DANCE).nextStopDelayMillis()
-        assertTrue(delay in 5_000..15_000)
+        assertTrue(delay!! in 5_000..15_000)
+    }
+
+    @Test
+    fun `nextStopDelayMillis is null when the pick would land within the end-of-track guard`() {
+        val e = engine(Mode.FREEZE_DANCE, minMillis = 10_000, maxMillis = 10_000)
+        // 10s pick, 15s remaining: lands 5s before the end, inside the 10s guard window.
+        assertEquals(null, e.nextStopDelayMillis(remainingTrackMillis = 15_000))
+    }
+
+    @Test
+    fun `nextStopDelayMillis is null for a track shorter than the guard window`() {
+        val e = engine(Mode.FREEZE_DANCE, minMillis = 5_000, maxMillis = 5_000)
+        assertEquals(null, e.nextStopDelayMillis(remainingTrackMillis = 8_000))
+    }
+
+    @Test
+    fun `nextStopDelayMillis returns the pick when it clears the end-of-track guard`() {
+        val e = engine(Mode.FREEZE_DANCE, minMillis = 10_000, maxMillis = 10_000)
+        assertEquals(10_000, e.nextStopDelayMillis(remainingTrackMillis = 25_000))
     }
 
     @Test
@@ -419,5 +438,34 @@ class SessionEngineTest {
         val e = engine(Mode.MUSICAL_CHAIRS)
         e.stop()
         assertFailsWith<IllegalStateException> { e.pause(remainingFreezeMillis = 3_000) }
+    }
+
+    @Test
+    fun `skipToNext works during meta-Pause`() {
+        val playlist = Playlist(tracks = listOf(track("a"), track("b"), track("c")))
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        e.pause()
+        e.skipToNext()
+        assertEquals(track("b"), e.currentTrack)
+        assertTrue(e.state is SessionState.Paused)
+    }
+
+    @Test
+    fun `skipToPrevious works during meta-Pause`() {
+        val playlist = Playlist(tracks = listOf(track("a"), track("b"), track("c")), loop = true)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        e.skipToNext()
+        e.pause()
+        e.skipToPrevious()
+        assertEquals(track("a"), e.currentTrack)
+        assertTrue(e.state is SessionState.Paused)
+    }
+
+    @Test
+    fun `skipToNext rejects when Finished`() {
+        val playlist = Playlist(tracks = listOf(track("a")), loop = false)
+        val e = engine(Mode.FREEZE_DANCE, playlist = playlist)
+        e.onPlaylistEnded()
+        assertFailsWith<IllegalStateException> { e.skipToNext() }
     }
 }

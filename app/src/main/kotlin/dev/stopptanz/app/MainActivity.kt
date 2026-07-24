@@ -20,10 +20,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -71,6 +77,9 @@ import dev.stopptanz.engine.TrackRemaining
 import dev.stopptanz.engine.TrackStatus
 import kotlinx.coroutines.launch
 
+/** Fixed height for the two mode-select buttons so "Reise nach Jerusalem" (2 lines in German) doesn't grow taller than "Stopptanz" (1 line). */
+private val MODE_BUTTON_MIN_HEIGHT = 64.dp
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,6 +97,7 @@ fun StopptanzApp(playlistRepository: PlaylistRepository, sessionSettings: Sessio
     val scope = rememberCoroutineScope()
     var state by remember { mutableStateOf<PlaylistSelectionState>(PlaylistSelectionState.Loading) }
     var reviewedPlaylist by remember { mutableStateOf<Playlist?>(null) }
+    var sessionActive by remember { mutableStateOf(false) }
 
     val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri == null) {
@@ -126,11 +136,15 @@ fun StopptanzApp(playlistRepository: PlaylistRepository, sessionSettings: Sessio
                 Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                val selected = state as? PlaylistSelectionState.Selected
+                val hideSubtitle = sessionActive && selected?.kind == SelectionKind.TRACK
+
                 NeonTitle(stringResource(R.string.app_name), Modifier.fillMaxWidth().padding(bottom = 4.dp))
-                NeonSubtext(state.statusText(), Modifier.padding(bottom = 20.dp))
+                if (!hideSubtitle) {
+                    NeonSubtext(state.statusText(), Modifier.padding(bottom = 20.dp))
+                }
 
                 val folderChoice = state as? PlaylistSelectionState.FolderChoice
-                val selected = state as? PlaylistSelectionState.Selected
                 val reviewGatedKinds = setOf(SelectionKind.FOLDER, SelectionKind.PLAYLIST_FILE)
                 if (folderChoice != null) {
                     PlaylistFileChoiceScreen(
@@ -155,6 +169,7 @@ fun StopptanzApp(playlistRepository: PlaylistRepository, sessionSettings: Sessio
                             sessionSettings,
                             onPickFolder = { pickFolder.launch(null) },
                             onPickTrack = { pickTrack.launch(arrayOf("audio/*")) },
+                            onSessionActiveChanged = { sessionActive = it },
                         )
                     }
                 } else {
@@ -172,13 +187,14 @@ private fun SessionSection(
     sessionSettings: SessionSettings,
     onPickFolder: () -> Unit,
     onPickTrack: () -> Unit,
+    onSessionActiveChanged: (Boolean) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val pauseDurationMillis by sessionSettings.pauseDurationMillisFlow().collectAsState(initial = 4_000)
     val mode by sessionSettings.modeFlow().collectAsState(initial = Mode.FREEZE_DANCE)
-    val stopIntervalMinMillis by sessionSettings.stopIntervalMinMillisFlow().collectAsState(initial = 10_000)
-    val stopIntervalMaxMillis by sessionSettings.stopIntervalMaxMillisFlow().collectAsState(initial = 25_000)
+    val stopIntervalMinMillis by sessionSettings.stopIntervalMinMillisFlow(mode).collectAsState(initial = 10_000)
+    val stopIntervalMaxMillis by sessionSettings.stopIntervalMaxMillisFlow(mode).collectAsState(initial = 25_000)
     val shuffle by sessionSettings.shuffleFlow().collectAsState(initial = false)
     val loop by sessionSettings.loopFlow().collectAsState(initial = false)
 
@@ -190,6 +206,10 @@ private fun SessionSection(
     var serviceConnection by remember { mutableStateOf<ServiceConnection?>(null) }
     var activeSessionMode by remember { mutableStateOf(Mode.FREEZE_DANCE) }
     var showEndSessionConfirmation by remember { mutableStateOf(false) }
+
+    LaunchedEffect(sessionState) {
+        onSessionActiveChanged(sessionState != null)
+    }
 
     val requestNotificationPermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -251,30 +271,32 @@ private fun SessionSection(
             NeonOutlineButton(
                 stringResource(R.string.mode_freeze_dance),
                 onClick = { scope.launch { sessionSettings.setMode(Mode.FREEZE_DANCE) } },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).heightIn(min = MODE_BUTTON_MIN_HEIGHT),
                 active = mode == Mode.FREEZE_DANCE,
             )
             NeonOutlineButton(
                 stringResource(R.string.mode_musical_chairs),
                 onClick = { scope.launch { sessionSettings.setMode(Mode.MUSICAL_CHAIRS) } },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).heightIn(min = MODE_BUTTON_MIN_HEIGHT),
                 active = mode == Mode.MUSICAL_CHAIRS,
             )
         }
 
         NeonCollapsibleCard(
-            summaryText = pauseStopIntervalSummary(pauseDurationMillis, stopIntervalMinMillis, stopIntervalMaxMillis),
+            summaryText = pauseStopIntervalSummary(mode, pauseDurationMillis, stopIntervalMinMillis, stopIntervalMaxMillis),
             modifier = Modifier.padding(bottom = 14.dp),
         ) {
-            PauseDurationControls(pauseDurationMillis) { millis ->
-                scope.launch { sessionSettings.setPauseDurationMillis(millis) }
+            if (mode == Mode.FREEZE_DANCE) {
+                PauseDurationControls(pauseDurationMillis) { millis ->
+                    scope.launch { sessionSettings.setPauseDurationMillis(millis) }
+                }
+                Spacer(Modifier.height(14.dp))
             }
-            Spacer(Modifier.height(14.dp))
             StopIntervalControls(
                 stopIntervalMinMillis = stopIntervalMinMillis,
                 stopIntervalMaxMillis = stopIntervalMaxMillis,
-                onMinChange = { millis -> scope.launch { sessionSettings.setStopIntervalMinMillis(millis) } },
-                onMaxChange = { millis -> scope.launch { sessionSettings.setStopIntervalMaxMillis(millis) } },
+                onMinChange = { millis -> scope.launch { sessionSettings.setStopIntervalMinMillis(mode, millis) } },
+                onMaxChange = { millis -> scope.launch { sessionSettings.setStopIntervalMaxMillis(mode, millis) } },
             )
         }
 
@@ -295,7 +317,7 @@ private fun SessionSection(
 
     } else {
         when (sessionState) {
-            SessionState.Playing -> NeonPrimaryButton(stringResource(R.string.button_stop), onClick = { activeService.stop() }, modifier = Modifier.padding(top = 8.dp))
+            SessionState.Playing -> NeonPrimaryButton(stringResource(R.string.button_stop), onClick = { activeService.stop() }, modifier = Modifier.padding(top = 8.dp), icon = Icons.Filled.Stop)
             SessionState.Stopped -> {
                 val remaining = pauseRemainingMillis
                 val resumeLabel = if (activeSessionMode == Mode.FREEZE_DANCE && remaining != null) {
@@ -304,7 +326,7 @@ private fun SessionSection(
                 } else {
                     stringResource(R.string.button_resume)
                 }
-                NeonPrimaryButton(resumeLabel, onClick = { activeService.resume() }, modifier = Modifier.padding(top = 8.dp))
+                NeonPrimaryButton(resumeLabel, onClick = { activeService.resume() }, modifier = Modifier.padding(top = 8.dp), icon = Icons.Filled.PlayArrow)
             }
             SessionState.Finished -> {
                 NeonLabel(stringResource(R.string.label_finished), Modifier.padding(vertical = 4.dp))
@@ -319,12 +341,14 @@ private fun SessionSection(
                 stringResource(R.string.button_pause_session),
                 onClick = { activeService.pauseSession() },
                 modifier = Modifier.padding(top = 8.dp),
+                icon = Icons.Filled.Pause,
             )
         } else if (sessionState is SessionState.Paused) {
             NeonPrimaryButton(
                 stringResource(R.string.button_resume_from_pause),
                 onClick = { activeService.resumeFromPause() },
                 modifier = Modifier.padding(top = 8.dp),
+                icon = Icons.Filled.PlayArrow,
             )
         }
 
@@ -361,23 +385,25 @@ private fun SessionSection(
 
         if (sessionState == SessionState.Playing || sessionState == SessionState.Stopped || sessionState is SessionState.Paused) {
             NeonCollapsibleCard(
-                summaryText = pauseStopIntervalSummary(pauseDurationMillis, stopIntervalMinMillis, stopIntervalMaxMillis),
+                summaryText = pauseStopIntervalSummary(activeSessionMode, pauseDurationMillis, stopIntervalMinMillis, stopIntervalMaxMillis),
                 modifier = Modifier.padding(vertical = 14.dp),
             ) {
-                PauseDurationControls(pauseDurationMillis) { millis ->
-                    scope.launch { sessionSettings.setPauseDurationMillis(millis) }
-                    activeService.setPauseDurationMillis(millis)
+                if (activeSessionMode == Mode.FREEZE_DANCE) {
+                    PauseDurationControls(pauseDurationMillis) { millis ->
+                        scope.launch { sessionSettings.setPauseDurationMillis(millis) }
+                        activeService.setPauseDurationMillis(millis)
+                    }
+                    Spacer(Modifier.height(14.dp))
                 }
-                Spacer(Modifier.height(14.dp))
                 StopIntervalControls(
                     stopIntervalMinMillis = stopIntervalMinMillis,
                     stopIntervalMaxMillis = stopIntervalMaxMillis,
                     onMinChange = { millis ->
-                        scope.launch { sessionSettings.setStopIntervalMinMillis(millis) }
+                        scope.launch { sessionSettings.setStopIntervalMinMillis(activeSessionMode, millis) }
                         activeService.setStopInterval(millis, stopIntervalMaxMillis)
                     },
                     onMaxChange = { millis ->
-                        scope.launch { sessionSettings.setStopIntervalMaxMillis(millis) }
+                        scope.launch { sessionSettings.setStopIntervalMaxMillis(activeSessionMode, millis) }
                         activeService.setStopInterval(stopIntervalMinMillis, millis)
                     },
                 )
@@ -566,10 +592,14 @@ private fun TrackStatusDisplay(trackStatus: TrackStatus, playbackPosition: Playb
         NeonLabel(stringResource(R.string.label_now_playing))
         NeonValue(trackStatus.current.name, Modifier.padding(bottom = 8.dp))
         playbackPosition?.let {
-            NeonTimerText(it.formatCurrent(), Modifier.fillMaxWidth())
-            NeonSubtext(
+            NeonTimerText(
                 stringResource(R.string.label_track_duration, it.formatCurrent(), it.formatTotal()),
-                Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                Modifier.fillMaxWidth(),
+            )
+            val progress = if (it.totalMillis > 0) (it.currentMillis.toFloat() / it.totalMillis).coerceIn(0f, 1f) else 0f
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
             )
         }
         Spacer(Modifier.height(8.dp))
@@ -623,13 +653,17 @@ private fun TrackRemaining.displayText(): String = when (this) {
 }
 
 @Composable
-private fun pauseStopIntervalSummary(pauseDurationMillis: Int, stopIntervalMinMillis: Int, stopIntervalMaxMillis: Int): String =
-    stringResource(
-        R.string.label_pause_stop_interval_summary,
-        pauseDurationMillis / 1000,
-        stopIntervalMinMillis / 1000,
-        stopIntervalMaxMillis / 1000,
-    )
+private fun pauseStopIntervalSummary(mode: Mode, pauseDurationMillis: Int, stopIntervalMinMillis: Int, stopIntervalMaxMillis: Int): String =
+    if (mode == Mode.FREEZE_DANCE) {
+        stringResource(
+            R.string.label_pause_stop_interval_summary,
+            pauseDurationMillis / 1000,
+            stopIntervalMinMillis / 1000,
+            stopIntervalMaxMillis / 1000,
+        )
+    } else {
+        stringResource(R.string.label_stop_interval, stopIntervalMinMillis / 1000, stopIntervalMaxMillis / 1000)
+    }
 
 @Composable
 private fun PauseDurationControls(pauseDurationMillis: Int, onChange: (Int) -> Unit) {

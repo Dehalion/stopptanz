@@ -35,7 +35,6 @@ class SessionPlaybackAdapter(
     private var autoResumeJob: Job? = null
     private var autoStopJob: Job? = null
     private var positionTickerJob: Job? = null
-    private var pauseCountdownJob: Job? = null
 
     /** Latest freeze auto-resume countdown value pushed via [onPauseRemainingChanged]; captured by [pause] when pausing mid-countdown. */
     private var currentPauseRemainingMillis: Long? = null
@@ -56,6 +55,8 @@ class SessionPlaybackAdapter(
                 if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO) {
                     engine.onTrackAdvanced()
                     onTrackChanged(engine.trackStatus)
+                    autoStopJob?.cancel()
+                    scheduleAutoStop()
                 }
             }
         })
@@ -88,7 +89,7 @@ class SessionPlaybackAdapter(
 
     fun resume() {
         autoResumeJob?.cancel()
-        stopPauseCountdown()
+        clearPauseRemaining()
         engine.resume()
         player.play()
         startPositionTicker()
@@ -106,7 +107,7 @@ class SessionPlaybackAdapter(
         autoStopJob?.cancel()
         autoResumeJob?.cancel()
         stopPositionTicker()
-        stopPauseCountdown()
+        clearPauseRemaining()
         player.pause()
         engine.pause(remainingFreezeMillis)
         onStateChanged(engine.state)
@@ -176,12 +177,19 @@ class SessionPlaybackAdapter(
         scheduleAutoResumeWithRemaining(engine.pauseDurationMillis)
     }
 
+    /**
+     * Schedules auto-resume against a wall-clock deadline (now + [remainingMillis]) rather than
+     * trusting a single coroutine `delay()` call to fire on time: under Doze/background CPU
+     * throttling a `delay()` can run long, and re-deriving "how much is left" from
+     * [System.currentTimeMillis] on every tick (instead of subtracting a fixed tick size) keeps
+     * the UI countdown and the actual resume in lockstep instead of drifting apart.
+     */
     private fun scheduleAutoResumeWithRemaining(remainingMillis: Long) {
-        startPauseCountdown(remainingMillis)
+        setPauseRemaining(remainingMillis)
         autoResumeJob = scope.launch {
-            delay(remainingMillis)
+            awaitDeadline(remainingMillis, PAUSE_COUNTDOWN_TICK_MILLIS) { remaining -> setPauseRemaining(remaining) }
             engine.onPauseElapsed()
-            stopPauseCountdown()
+            clearPauseRemaining()
             player.play()
             startPositionTicker()
             onStateChanged(engine.state)
@@ -189,23 +197,12 @@ class SessionPlaybackAdapter(
         }
     }
 
-    private fun startPauseCountdown(totalMillis: Long) {
-        pauseCountdownJob = scope.launch {
-            var remaining = totalMillis
-            currentPauseRemainingMillis = remaining
-            onPauseRemainingChanged(remaining)
-            while (remaining > 0) {
-                delay(PAUSE_COUNTDOWN_TICK_MILLIS)
-                remaining = (remaining - PAUSE_COUNTDOWN_TICK_MILLIS).coerceAtLeast(0)
-                currentPauseRemainingMillis = remaining
-                onPauseRemainingChanged(remaining)
-            }
-        }
+    private fun setPauseRemaining(remainingMillis: Long) {
+        currentPauseRemainingMillis = remainingMillis
+        onPauseRemainingChanged(remainingMillis)
     }
 
-    private fun stopPauseCountdown() {
-        pauseCountdownJob?.cancel()
-        pauseCountdownJob = null
+    private fun clearPauseRemaining() {
         currentPauseRemainingMillis = null
         onPauseRemainingChanged(null)
     }
@@ -232,9 +229,18 @@ class SessionPlaybackAdapter(
         engine.setPauseDurationMillis(pauseDurationMillis)
     }
 
+    /**
+     * Picks the next Stop delay and schedules it against a wall-clock deadline (see
+     * [scheduleAutoResumeWithRemaining] for why). If the pick would land within the last
+     * [SessionEngine.END_OF_TRACK_GUARD_MILLIS] of the current Track, no Stop is scheduled at
+     * all — the Track plays out, and [onMediaItemTransition] reschedules for the next one.
+     */
     private fun scheduleAutoStop() {
+        val duration = player.duration
+        val remainingTrackMillis = if (duration == C.TIME_UNSET) Long.MAX_VALUE else (duration - player.currentPosition).coerceAtLeast(0)
+        val delayMillis = engine.nextStopDelayMillis(remainingTrackMillis) ?: return
         autoStopJob = scope.launch {
-            delay(engine.nextStopDelayMillis())
+            awaitDeadline(delayMillis, POSITION_POLL_INTERVAL_MILLIS)
             performStop()
         }
     }
@@ -243,7 +249,7 @@ class SessionPlaybackAdapter(
     fun cancelJobs() {
         autoResumeJob?.cancel()
         autoStopJob?.cancel()
-        stopPauseCountdown()
+        clearPauseRemaining()
         stopPositionTicker()
     }
 

@@ -244,16 +244,18 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    /** Jumps to the previous Track in the Playlist; a no-op while Finished/Closed, matching stop()/resume()'s state guard. */
+    /** Jumps to the previous Track in the Playlist; also allowed during meta-Pause (matches the skip buttons' visibility), a no-op while Finished/Closed. */
     fun skipToPrevious() {
-        if (_sessionState.value == SessionState.Playing || _sessionState.value == SessionState.Stopped) {
+        val state = _sessionState.value
+        if (state == SessionState.Playing || state == SessionState.Stopped || state is SessionState.Paused) {
             adapter?.skipToPrevious()
         }
     }
 
-    /** Jumps to the next Track in the Playlist; a no-op while Finished/Closed, matching stop()/resume()'s state guard. */
+    /** Jumps to the next Track in the Playlist; also allowed during meta-Pause (matches the skip buttons' visibility), a no-op while Finished/Closed. */
     fun skipToNext() {
-        if (_sessionState.value == SessionState.Playing || _sessionState.value == SessionState.Stopped) {
+        val state = _sessionState.value
+        if (state == SessionState.Playing || state == SessionState.Stopped || state is SessionState.Paused) {
             adapter?.skipToNext()
         }
     }

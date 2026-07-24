@@ -60,8 +60,20 @@ class SessionEngine(
         }
     }
 
-    fun nextStopDelayMillis(): Long =
-        randomSource.nextLong(stopInterval.minMillis, stopInterval.maxMillis)
+    /**
+     * Picks the next Stop delay, or `null` if that pick would land within the last
+     * [END_OF_TRACK_GUARD_MILLIS] of the current Track — in which case the caller should let the
+     * Track play out to its natural end instead of scheduling a Stop.
+     */
+    fun nextStopDelayMillis(remainingTrackMillis: Long = Long.MAX_VALUE): Long? {
+        val delay = randomSource.nextLong(stopInterval.minMillis, stopInterval.maxMillis)
+        return if (remainingTrackMillis - delay < END_OF_TRACK_GUARD_MILLIS) null else delay
+    }
+
+    companion object {
+        /** No Stop is ever scheduled to land within this many milliseconds of a Track's natural end. */
+        const val END_OF_TRACK_GUARD_MILLIS = 10_000L
+    }
 
     /** Applies prospectively: a countdown already in flight captured its value on return and is unaffected. */
     fun setStopInterval(stopInterval: StopInterval) {
@@ -105,7 +117,7 @@ class SessionEngine(
 
     /** Host-driven jump to the previous Track; wraps when Loop is on, a no-op at the first Track otherwise. Leaves [state] unchanged. */
     fun skipToPrevious() {
-        check(state is SessionState.Playing || state is SessionState.Stopped) { "Cannot Skip from $state" }
+        check(state is SessionState.Playing || state is SessionState.Stopped || state is SessionState.Paused) { "Cannot Skip from $state" }
         val previous = currentTrackIndex - 1
         currentTrackIndex = if (playlist.loop) {
             (previous + orderedTracks.size) % orderedTracks.size
@@ -116,7 +128,7 @@ class SessionEngine(
 
     /** Host-driven jump to the next Track; wraps when Loop is on, a no-op at the last Track otherwise. Leaves [state] unchanged. */
     fun skipToNext() {
-        check(state is SessionState.Playing || state is SessionState.Stopped) { "Cannot Skip from $state" }
+        check(state is SessionState.Playing || state is SessionState.Stopped || state is SessionState.Paused) { "Cannot Skip from $state" }
         val next = currentTrackIndex + 1
         currentTrackIndex = if (playlist.loop) {
             next % orderedTracks.size
