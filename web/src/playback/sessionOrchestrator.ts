@@ -2,13 +2,16 @@ import type { SessionEngine } from '../engine/sessionEngine'
 import type { SessionState } from '../engine/sessionState'
 import type { StopInterval } from '../engine/stopInterval'
 
+export interface TimerHandle {
+  cancel(): void
+}
+
 export interface PlaybackIo {
   playAudio(): void
   pauseAudio(): void
   /** Milliseconds left in the current Track; `Number.MAX_SAFE_INTEGER` (or similar) if unknown. */
   getRemainingTrackMillis(): number
-  scheduleTimer(durationMillis: number, onFire: () => void, onTick?: (remainingMillis: number) => void): unknown
-  cancelTimer(handle: unknown | null): void
+  scheduleTimer(durationMillis: number, onFire: () => void, onTick?: (remainingMillis: number) => void): TimerHandle
 }
 
 export interface SessionOrchestratorCallbacks {
@@ -25,8 +28,8 @@ export class SessionOrchestrator {
   private readonly engine: SessionEngine
   private readonly io: PlaybackIo
   private readonly callbacks: SessionOrchestratorCallbacks
-  private autoStopHandle: unknown | null = null
-  private autoResumeHandle: unknown | null = null
+  private autoStopHandle: TimerHandle | null = null
+  private autoResumeHandle: TimerHandle | null = null
   private pauseRemainingMillis: number | null = null
 
   constructor(engine: SessionEngine, io: PlaybackIo, callbacks: SessionOrchestratorCallbacks = {}) {
@@ -41,7 +44,7 @@ export class SessionOrchestrator {
   }
 
   stop(): void {
-    this.io.cancelTimer(this.autoStopHandle)
+    this.autoStopHandle?.cancel()
     this.performStop()
   }
 
@@ -55,7 +58,7 @@ export class SessionOrchestrator {
   }
 
   resume(): void {
-    this.io.cancelTimer(this.autoResumeHandle)
+    this.autoResumeHandle?.cancel()
     this.clearPauseRemaining()
     this.engine.resume()
     this.io.playAudio()
@@ -67,8 +70,8 @@ export class SessionOrchestrator {
   pause(): void {
     const remainingFreezeMillis =
       this.engine.state.kind === 'stopped' && this.engine.mode === 'FREEZE_DANCE' ? this.pauseRemainingMillis : null
-    this.io.cancelTimer(this.autoStopHandle)
-    this.io.cancelTimer(this.autoResumeHandle)
+    this.autoStopHandle?.cancel()
+    this.autoResumeHandle?.cancel()
     this.clearPauseRemaining()
     this.io.pauseAudio()
     this.engine.pause(remainingFreezeMillis)
@@ -88,7 +91,7 @@ export class SessionOrchestrator {
 
   /** Called once the current Track has naturally ended (audio `ended` event). */
   trackEnded(): void {
-    this.io.cancelTimer(this.autoStopHandle)
+    this.autoStopHandle?.cancel()
     if (this.engine.nextTrack === null && !this.engine.playlist.loop) {
       this.engine.onPlaylistEnded()
       this.callbacks.onStateChanged?.(this.engine.state)
@@ -101,10 +104,10 @@ export class SessionOrchestrator {
   /** Reschedules whichever pending timer applies to the current state after a host-driven Skip. */
   rescheduleTimersForCurrentState(): void {
     if (this.engine.state.kind === 'playing') {
-      this.io.cancelTimer(this.autoStopHandle)
+      this.autoStopHandle?.cancel()
       this.scheduleAutoStop()
     } else if (this.engine.state.kind === 'stopped' && this.engine.mode === 'FREEZE_DANCE') {
-      this.io.cancelTimer(this.autoResumeHandle)
+      this.autoResumeHandle?.cancel()
       this.scheduleAutoResume()
     }
   }
@@ -118,8 +121,8 @@ export class SessionOrchestrator {
   }
 
   close(): void {
-    this.io.cancelTimer(this.autoStopHandle)
-    this.io.cancelTimer(this.autoResumeHandle)
+    this.autoStopHandle?.cancel()
+    this.autoResumeHandle?.cancel()
     this.clearPauseRemaining()
     this.engine.close()
     this.io.pauseAudio()

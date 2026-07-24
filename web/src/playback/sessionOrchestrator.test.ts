@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { SessionEngine } from '../engine/sessionEngine'
 import { createStopInterval } from '../engine/stopInterval'
 import type { Track } from '../engine/track'
-import { SessionOrchestrator, type PlaybackIo } from './sessionOrchestrator'
+import { SessionOrchestrator, type PlaybackIo, type TimerHandle } from './sessionOrchestrator'
 
 const track = (name: string): Track => ({ uri: `content://${name}`, name })
 
-interface FakeTimer {
+interface FakeTimer extends TimerHandle {
   durationMillis: number
   onFire: () => void
   onTick?: (remaining: number) => void
@@ -31,13 +31,17 @@ class FakeIo implements PlaybackIo {
   }
 
   scheduleTimer(durationMillis: number, onFire: () => void, onTick?: (remaining: number) => void): FakeTimer {
-    const timer: FakeTimer = { durationMillis, onFire, onTick, cancelled: false }
+    const timer: FakeTimer = {
+      durationMillis,
+      onFire,
+      onTick,
+      cancelled: false,
+      cancel() {
+        this.cancelled = true
+      },
+    }
     this.timers.push(timer)
     return timer
-  }
-
-  cancelTimer(handle: FakeTimer | null): void {
-    if (handle) handle.cancelled = true
   }
 
   /** Test helper: simulates a scheduled timer reaching its deadline. */

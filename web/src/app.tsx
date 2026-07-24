@@ -23,8 +23,10 @@ export function App() {
     setReviewTracks(playlist?.tracks ?? null)
   }
 
+  const stopIntervalValid = stopMinSeconds >= 0 && stopMaxSeconds >= stopMinSeconds
+
   function startPlayback() {
-    if (!reviewTracks) return
+    if (!reviewTracks || !stopIntervalValid) return
     player.start({
       playlist: { tracks: reviewTracks, shuffle, loop },
       mode,
@@ -116,9 +118,10 @@ export function App() {
               </li>
             ))}
           </ol>
-          <button type="button" onClick={startPlayback} disabled={reviewTracks.length === 0}>
+          <button type="button" onClick={startPlayback} disabled={reviewTracks.length === 0 || !stopIntervalValid}>
             Play
           </button>
+          {!stopIntervalValid && <p>Stop interval max must be at least min.</p>}
         </section>
       )}
 

@@ -7,7 +7,7 @@ import { PLAYING, type SessionState } from '../engine/sessionState'
 import type { StopInterval } from '../engine/stopInterval'
 import type { Track, TrackRemaining } from '../engine/track'
 import { SEEK_STEP_MILLIS, clampSeek } from './seek'
-import { SessionOrchestrator, type PlaybackIo } from './sessionOrchestrator'
+import { SessionOrchestrator, type PlaybackIo, type TimerHandle } from './sessionOrchestrator'
 
 const AUTO_RESUME_TICK_MILLIS = 1_000
 
@@ -39,24 +39,26 @@ export interface PlaylistPlayer {
   seekForward: () => void
 }
 
-function createTimerScheduler() {
-  return {
-    scheduleTimer(durationMillis: number, onFire: () => void, onTick?: (remaining: number) => void): unknown {
-      const token = { cancelled: false }
-      void awaitDeadline({
-        durationMillis,
-        tickMillis: AUTO_RESUME_TICK_MILLIS,
-        isCancelled: () => token.cancelled,
-        onTick,
-      }).then(() => {
-        if (!token.cancelled) onFire()
-      })
-      return token
-    },
-    cancelTimer(handle: unknown | null): void {
-      if (handle) (handle as { cancelled: boolean }).cancelled = true
+function scheduleDeadlineTimer(
+  durationMillis: number,
+  onFire: () => void,
+  onTick?: (remaining: number) => void,
+): TimerHandle {
+  const handle: TimerHandle & { cancelled: boolean } = {
+    cancelled: false,
+    cancel() {
+      this.cancelled = true
     },
   }
+  void awaitDeadline({
+    durationMillis,
+    tickMillis: AUTO_RESUME_TICK_MILLIS,
+    isCancelled: () => handle.cancelled,
+    onTick,
+  }).then(() => {
+    if (!handle.cancelled) onFire()
+  })
+  return handle
 }
 
 /** Wraps an `<audio>` element with a SessionOrchestrator driving the full Stop/Resume/Pause game loop. */
@@ -78,7 +80,7 @@ export function usePlaylistPlayer(): PlaylistPlayer {
       if (!Number.isFinite(audio.duration)) return Number.MAX_SAFE_INTEGER
       return Math.max(audio.duration * 1000 - audio.currentTime * 1000, 0)
     },
-    ...createTimerScheduler(),
+    scheduleTimer: scheduleDeadlineTimer,
   })
 
   useEffect(() => {
@@ -102,10 +104,11 @@ export function usePlaylistPlayer(): PlaylistPlayer {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  /** Points `<audio>` at the engine's current Track, playing only if the Session is Playing. */
+  /** Points `<audio>` at the engine's current Track, playing only if the Session is Playing — a
+   * no-op once the Session has Finished, since the last Track is already loaded and stopped. */
   function syncAudioToCurrentTrack() {
     const engine = engineRef.current
-    if (!engine) return
+    if (!engine || engine.state.kind === 'finished') return
     audioRef.current.src = engine.currentTrack.uri
     if (engine.state.kind === 'playing') void audioRef.current.play()
   }
