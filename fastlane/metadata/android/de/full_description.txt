@@ -1,0 +1,11 @@
+Stopptanz spielt eine lokale Musikdatei oder Playlist ab und stoppt die Wiedergabe an zufälligen Punkten, um ein Stopptanz-Partyspiel zu begleiten (Stopptanz / Reise nach Jerusalem). Die App ist reine Musik- und Timer-Engine — kein Spieler- oder Punktemanagement.
+
+Funktionen:
+- Stopptanz-Modus: Musik stoppt an zufälligem Punkt und setzt nach fester Pause automatisch wieder fort (Spielleiter kann auch manuell vorzeitig fortsetzen)
+- Reise-nach-Jerusalem-Modus: Musik stoppt an zufälligem Punkt und bleibt gestoppt, bis der Spielleiter manuell fortsetzt
+- Einstellbarer Stopp-Intervallbereich pro Modus
+- Playlist-Shuffle/Loop
+- Vor-/Zurückspulen, Titel überspringen
+- Steuerung über die Media-Benachrichtigung des Systems
+
+Keine Werbung, keine Analyse, kein Tracking, kein Netzwerkzugriff. Musikdateien werden ausschließlich aus selbst gewählten lokalen Speicherorten gelesen.

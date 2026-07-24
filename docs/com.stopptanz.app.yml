@@ -4,6 +4,7 @@ License: GPL-3.0-or-later
 SourceCode: https://github.com/Dehalion/stopptanz
 IssueTracker: https://github.com/Dehalion/stopptanz/issues
 Changelog: https://github.com/Dehalion/stopptanz/releases
+Metadata: fastlane/metadata/android
 
 AutoName: Stopptanz
 
