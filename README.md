@@ -33,4 +33,4 @@ This project was built with heavy AI assistance (Claude Code) under human direct
 
 ## License
 
-GPL-3.0-or-later. See [LICENSE](LICENSE).
+GPL-3.0-or-later. See [LICENSE](https://github.com/Dehalion/stopptanz/blob/main/LICENSE).
