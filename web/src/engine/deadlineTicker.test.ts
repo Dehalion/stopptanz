@@ -58,4 +58,24 @@ describe('deadlineTicker', () => {
     })
     expect(remainingLog).toEqual([0])
   })
+
+  it('stops ticking once isCancelled reports true, without a final zero tick', async () => {
+    let now = 0
+    let cancelled = false
+    const nowMillis = () => now
+    const sleep = async (ms: number) => {
+      now += ms
+      if (now >= 2_000) cancelled = true
+    }
+    const remainingLog: number[] = []
+    await awaitDeadline({
+      durationMillis: 3_000,
+      tickMillis: 1_000,
+      nowMillis,
+      sleep,
+      isCancelled: () => cancelled,
+      onTick: (remaining) => remainingLog.push(remaining),
+    })
+    expect(remainingLog).toEqual([2_000])
+  })
 })
