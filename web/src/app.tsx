@@ -21,6 +21,8 @@ export function App() {
     if (reviewTracks) player.load({ tracks: reviewTracks, shuffle, loop })
   }
 
+  const position = { currentMillis: player.currentMillis, totalMillis: player.totalMillis }
+
   return (
     <main>
       <h1>Stopptanz</h1>
@@ -69,8 +71,7 @@ export function App() {
         <section>
           <p>{player.currentTrack.name}</p>
           <p>
-            {formatCurrent({ currentMillis: player.currentMillis, totalMillis: player.totalMillis })} /{' '}
-            {formatTotal({ currentMillis: player.currentMillis, totalMillis: player.totalMillis })}
+            {formatCurrent(position)} / {formatTotal(position)}
           </p>
 
           <button type="button" onClick={player.skipToPrevious} disabled={!player.canSkipPrevious}>

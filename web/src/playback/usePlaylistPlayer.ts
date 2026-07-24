@@ -56,9 +56,11 @@ export function usePlaylistPlayer(): PlaylistPlayer {
     }
   }, [])
 
-  function playCurrentTrack() {
+  /** Plays `engine.currentTrack` and re-renders to reflect the engine's post-mutation state. */
+  function syncToEngine() {
     const engine = engineRef.current
     if (!engine) return
+    forceRender((n) => n + 1)
     audioRef.current.src = engine.currentTrack.uri
     void audioRef.current.play()
   }
@@ -73,8 +75,7 @@ export function usePlaylistPlayer(): PlaylistPlayer {
       return
     }
     engine.onTrackAdvanced()
-    forceRender((n) => n + 1)
-    playCurrentTrack()
+    syncToEngine()
   }
 
   function load(playlist: Playlist) {
@@ -85,11 +86,11 @@ export function usePlaylistPlayer(): PlaylistPlayer {
       pauseDurationMillis: 0,
     })
     setIsFinished(false)
-    forceRender((n) => n + 1)
-    playCurrentTrack()
+    syncToEngine()
   }
 
   function togglePlayPause() {
+    if (isFinished) return
     const audio = audioRef.current
     if (audio.paused) void audio.play()
     else audio.pause()
@@ -97,18 +98,16 @@ export function usePlaylistPlayer(): PlaylistPlayer {
 
   function skipToNext() {
     const engine = engineRef.current
-    if (!engine || !engine.canSkipNext) return
+    if (!engine || isFinished || !engine.canSkipNext) return
     engine.skipToNext()
-    forceRender((n) => n + 1)
-    playCurrentTrack()
+    syncToEngine()
   }
 
   function skipToPrevious() {
     const engine = engineRef.current
-    if (!engine || !engine.canSkipPrevious) return
+    if (!engine || isFinished || !engine.canSkipPrevious) return
     engine.skipToPrevious()
-    forceRender((n) => n + 1)
-    playCurrentTrack()
+    syncToEngine()
   }
 
   function seekBy(deltaMillis: number) {
