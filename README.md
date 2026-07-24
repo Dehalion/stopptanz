@@ -11,10 +11,10 @@ No ads, no analytics, no tracking, no network access at all — see [PRIVACY.md]
 ## Screenshots
 
 <p>
-  <img src="docs/images/01-home.png" width="200" alt="Home screen">
-  <img src="docs/images/04-session-active.png" width="200" alt="Session active">
-  <img src="docs/images/02-freeze-paused.png" width="200" alt="Freeze paused">
-  <img src="docs/images/03-notification-controls.png" width="200" alt="Notification controls">
+  <img src="docs/images/01-home.png" width="200" alt="Home screen" align="top">
+  <img src="docs/images/04-session-active.png" width="200" alt="Session active" align="top">
+  <img src="docs/images/02-freeze-paused.png" width="200" alt="Freeze paused" align="top">
+  <img src="docs/images/03-notification-controls.png" width="200" alt="Notification controls" align="top">
 </p>
 
 ## Building
