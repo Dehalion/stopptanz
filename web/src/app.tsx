@@ -3,6 +3,7 @@ import { buildPlaylist } from './playlist/playlistBuilder'
 import { moveDown, moveUp, remove } from './playlist/trackReview'
 import { formatCurrent, formatTotal } from './engine/playbackPosition'
 import type { Mode } from './engine/mode'
+import type { SessionState } from './engine/sessionState'
 import { createStopInterval } from './engine/stopInterval'
 import { usePlaylistPlayer } from './playback/usePlaylistPlayer'
 import type { Track } from './engine/track'
@@ -15,7 +16,7 @@ import {
   saveStopIntervalMinSeconds,
 } from './settings/sessionSettings'
 
-const STATE_LABEL: Record<string, string> = {
+const STATE_LABEL: Record<SessionState['kind'], string> = {
   playing: 'Playing',
   stopped: 'Freeze!',
   paused: 'Paused',
@@ -223,7 +224,7 @@ export function App() {
             {formatCurrent(position)} / {formatTotal(position)}
           </p>
 
-          <span class={`state-badge state-badge--${state.kind}`}>{STATE_LABEL[state.kind] ?? state.kind}</span>
+          <span class={`state-badge state-badge--${state.kind}`}>{STATE_LABEL[state.kind]}</span>
           {player.pauseRemainingMillis !== null && (
             <p class="resume-countdown">Resuming in {Math.ceil(player.pauseRemainingMillis / 1000)}s</p>
           )}
@@ -234,7 +235,7 @@ export function App() {
               ⏮
             </button>
             <button type="button" class="icon-btn" aria-label="Seek back 10 seconds" onClick={player.seekBack}>
-              −10s
+              -10s
             </button>
             <button type="button" class="icon-btn" aria-label="Seek forward 10 seconds" onClick={player.seekForward}>
               +10s
