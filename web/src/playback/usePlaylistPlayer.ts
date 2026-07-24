@@ -6,6 +6,7 @@ import type { Playlist } from '../engine/playlist'
 import { PLAYING, type SessionState } from '../engine/sessionState'
 import type { StopInterval } from '../engine/stopInterval'
 import type { Track, TrackRemaining } from '../engine/track'
+import { clearActionHandlers, setActionHandlers, setTrackMetadata } from './mediaSession'
 import { SEEK_STEP_MILLIS, clampSeek } from './seek'
 import { SessionOrchestrator, type PlaybackIo, type TimerHandle } from './sessionOrchestrator'
 
@@ -156,6 +157,28 @@ export function usePlaylistPlayer(): PlaylistPlayer {
   }
 
   const engine = engineRef.current
+
+  useEffect(() => {
+    if (engine) setTrackMetadata(engine.currentTrack.name)
+  }, [engine?.currentTrack.name])
+
+  // Mirrors Android's PlaybackService MediaSession wiring: the OS play/pause control only ever
+  // maps to meta-Pause/Resume (not Stop/Resume's freeze mechanic), guarded so a stale/racy OS
+  // command can't call into the engine outside the state it expects.
+  useEffect(() => {
+    setActionHandlers({
+      play: () => {
+        if (sessionState?.kind === 'paused') orchestratorRef.current?.resumeFromPause()
+      },
+      pause: () => {
+        if (sessionState?.kind === 'playing' || sessionState?.kind === 'stopped') orchestratorRef.current?.pause()
+      },
+      previoustrack: skipToPrevious,
+      nexttrack: skipToNext,
+    })
+    return clearActionHandlers
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionState])
   return {
     sessionState,
     currentTrack: engine?.currentTrack ?? null,
