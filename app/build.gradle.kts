@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.stopptanz.app"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.stopptanz.app"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 3
         versionName = "1.2"
     }
