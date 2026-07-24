@@ -37,6 +37,7 @@ export interface PlaylistPlayer {
   skipToPrevious: () => void
   seekBack: () => void
   seekForward: () => void
+  setStopInterval: (stopInterval: StopInterval) => void
 }
 
 function scheduleDeadlineTimer(
@@ -174,5 +175,6 @@ export function usePlaylistPlayer(): PlaylistPlayer {
     skipToPrevious,
     seekBack: () => seekBy(-SEEK_STEP_MILLIS),
     seekForward: () => seekBy(SEEK_STEP_MILLIS),
+    setStopInterval: (stopInterval) => orchestratorRef.current?.setStopInterval(stopInterval),
   }
 }

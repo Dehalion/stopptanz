@@ -6,14 +6,23 @@ import type { Mode } from './engine/mode'
 import { createStopInterval } from './engine/stopInterval'
 import { usePlaylistPlayer } from './playback/usePlaylistPlayer'
 import type { Track } from './engine/track'
+import {
+  loadSessionSettings,
+  saveLoop,
+  saveMode,
+  saveShuffle,
+  saveStopIntervalMaxSeconds,
+  saveStopIntervalMinSeconds,
+} from './settings/sessionSettings'
 
 export function App() {
   const player = usePlaylistPlayer()
-  const [shuffle, setShuffle] = useState(false)
-  const [loop, setLoop] = useState(false)
-  const [mode, setMode] = useState<Mode>('FREEZE_DANCE')
-  const [stopMinSeconds, setStopMinSeconds] = useState(10)
-  const [stopMaxSeconds, setStopMaxSeconds] = useState(25)
+  const initialSettings = loadSessionSettings()
+  const [shuffle, setShuffle] = useState(initialSettings.shuffle)
+  const [loop, setLoop] = useState(initialSettings.loop)
+  const [mode, setMode] = useState<Mode>(initialSettings.mode)
+  const [stopMinSeconds, setStopMinSeconds] = useState(initialSettings.stopIntervalMinSeconds)
+  const [stopMaxSeconds, setStopMaxSeconds] = useState(initialSettings.stopIntervalMaxSeconds)
   const [pauseDurationSeconds, setPauseDurationSeconds] = useState(4)
   const [reviewTracks, setReviewTracks] = useState<Track[] | null>(null)
 
@@ -23,7 +32,46 @@ export function App() {
     setReviewTracks(playlist?.tracks ?? null)
   }
 
+  function onModeChange(newMode: Mode) {
+    setMode(newMode)
+    saveMode(newMode)
+    const settingsForMode = loadSessionSettings()
+    setStopMinSeconds(settingsForMode.stopIntervalMinSeconds)
+    setStopMaxSeconds(settingsForMode.stopIntervalMaxSeconds)
+  }
+
+  function onShuffleChange(value: boolean) {
+    setShuffle(value)
+    saveShuffle(value)
+  }
+
+  function onLoopChange(value: boolean) {
+    setLoop(value)
+    saveLoop(value)
+  }
+
   const stopIntervalValid = stopMinSeconds >= 0 && stopMaxSeconds >= stopMinSeconds
+
+  function onStopMinChange(value: number) {
+    setStopMinSeconds(value)
+    saveStopIntervalMinSeconds(mode, value)
+    applyStopIntervalIfValid(value, stopMaxSeconds)
+  }
+
+  function onStopMaxChange(value: number) {
+    setStopMaxSeconds(value)
+    saveStopIntervalMaxSeconds(mode, value)
+    applyStopIntervalIfValid(stopMinSeconds, value)
+  }
+
+  /** Stop Interval changes apply to the running Session immediately, matching Android; other
+   * settings (Mode, Shuffle, Loop) only take effect on the next Session since they're baked into
+   * the SessionEngine/Playlist at start(). */
+  function applyStopIntervalIfValid(minSeconds: number, maxSeconds: number) {
+    if (minSeconds >= 0 && maxSeconds >= minSeconds && player.sessionState) {
+      player.setStopInterval(createStopInterval(minSeconds * 1000, maxSeconds * 1000))
+    }
+  }
 
   function startPlayback() {
     if (!reviewTracks || !stopIntervalValid) return
@@ -45,22 +93,31 @@ export function App() {
       <input type="file" accept="audio/*" multiple onChange={onFilesSelected} />
 
       <label>
-        <input type="checkbox" checked={shuffle} onChange={(e) => setShuffle((e.target as HTMLInputElement).checked)} />
+        <input
+          type="checkbox"
+          checked={shuffle}
+          onChange={(e) => onShuffleChange((e.target as HTMLInputElement).checked)}
+        />
         Shuffle
       </label>
       <label>
-        <input type="checkbox" checked={loop} onChange={(e) => setLoop((e.target as HTMLInputElement).checked)} />
+        <input type="checkbox" checked={loop} onChange={(e) => onLoopChange((e.target as HTMLInputElement).checked)} />
         Loop
       </label>
 
       <fieldset>
         <legend>Mode</legend>
         <label>
-          <input type="radio" name="mode" checked={mode === 'FREEZE_DANCE'} onChange={() => setMode('FREEZE_DANCE')} />
+          <input type="radio" name="mode" checked={mode === 'FREEZE_DANCE'} onChange={() => onModeChange('FREEZE_DANCE')} />
           Freeze Dance
         </label>
         <label>
-          <input type="radio" name="mode" checked={mode === 'MUSICAL_CHAIRS'} onChange={() => setMode('MUSICAL_CHAIRS')} />
+          <input
+            type="radio"
+            name="mode"
+            checked={mode === 'MUSICAL_CHAIRS'}
+            onChange={() => onModeChange('MUSICAL_CHAIRS')}
+          />
           Musical Chairs
         </label>
       </fieldset>
@@ -71,7 +128,7 @@ export function App() {
           type="number"
           min={0}
           value={stopMinSeconds}
-          onInput={(e) => setStopMinSeconds(Number((e.target as HTMLInputElement).value))}
+          onInput={(e) => onStopMinChange(Number((e.target as HTMLInputElement).value))}
         />
       </label>
       <label>
@@ -80,7 +137,7 @@ export function App() {
           type="number"
           min={stopMinSeconds}
           value={stopMaxSeconds}
-          onInput={(e) => setStopMaxSeconds(Number((e.target as HTMLInputElement).value))}
+          onInput={(e) => onStopMaxChange(Number((e.target as HTMLInputElement).value))}
         />
       </label>
       {mode === 'FREEZE_DANCE' && (
