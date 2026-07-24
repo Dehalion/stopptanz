@@ -17,7 +17,7 @@ Builds:
     subdir: app
     gradle:
       - yes
-  - versionName: '1.2.1'
+  - versionName: 1.2.1
     versionCode: 4
     commit: v1.2.1
     subdir: app
@@ -26,5 +26,5 @@ Builds:
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: '1.2.1'
+CurrentVersion: 1.2.1
 CurrentVersionCode: 4
