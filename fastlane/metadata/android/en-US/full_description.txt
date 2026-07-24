@@ -1,0 +1,11 @@
+Stopptanz plays a local music file or playlist and randomly stops playback to drive a stop-dance party game (Freeze Dance / Musical Chairs). It's a music/timer engine only — no player, chair, or score tracking.
+
+Features:
+- Freeze Dance mode: music stops at a random point, then auto-resumes after a fixed pause (host can also resume early)
+- Musical Chairs mode: music stops at a random point and stays stopped until the host resumes it manually
+- Configurable stop-interval range per mode
+- Playlist shuffle/loop
+- Seek/skip controls
+- System media notification controls
+
+No ads, no analytics, no tracking, no network access at all. Music files are read only from local storage locations you pick yourself.
