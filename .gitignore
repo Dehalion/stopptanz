@@ -28,3 +28,7 @@ screenshots/
 
 scripts/forgejo/
 .claude/skills/forgejo-ops/
+
+# Release signing
+keystore.properties
+*.jks

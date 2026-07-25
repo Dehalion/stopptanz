@@ -1,0 +1,1 @@
+Reproduzierbarer Release-Build, signiertes APK.

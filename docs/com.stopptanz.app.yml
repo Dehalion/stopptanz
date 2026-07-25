@@ -10,21 +10,19 @@ AutoName: Stopptanz
 RepoType: git
 Repo: https://github.com/Dehalion/stopptanz.git
 
+Binaries: https://github.com/Dehalion/stopptanz/releases/download/v%v/stopptanz-v%v-build%c.apk
+
 Builds:
-  - versionName: '1.2'
-    versionCode: 3
-    commit: v1.2
-    subdir: app
-    gradle:
-      - yes
-  - versionName: 1.2.1
-    versionCode: 4
-    commit: v1.2.1
+  - versionName: 1.2.2
+    versionCode: 5
+    commit: REPLACE_WITH_FULL_COMMIT_HASH
     subdir: app
     gradle:
       - yes
 
+AllowedAPKSigningKeys: REPLACE_WITH_SIGNING_CERT_SHA256
+
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 1.2.1
-CurrentVersionCode: 4
+CurrentVersion: 1.2.2
+CurrentVersionCode: 5
