@@ -23,8 +23,8 @@ android {
         applicationId = "com.stopptanz.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.2.2"
+        versionCode = 6
+        versionName = "1.2.3"
     }
 
     // Google's dependency metadata blob is opaque and breaks reproducibility.
@@ -66,6 +66,12 @@ android {
     kotlinOptions {
         jvmTarget = "21"
     }
+}
+
+// Pin the compiler toolchain so the bytecode does not depend on whichever JDK
+// happens to be on PATH -- required for F-Droid's reproducible-build check.
+kotlin {
+    jvmToolchain(21)
 }
 
 dependencies {

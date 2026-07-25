@@ -13,16 +13,16 @@ Repo: https://github.com/Dehalion/stopptanz.git
 Binaries: https://github.com/Dehalion/stopptanz/releases/download/v%v/stopptanz-v%v-build%c.apk
 
 Builds:
-  - versionName: 1.2.2
-    versionCode: 5
-    commit: REPLACE_WITH_FULL_COMMIT_HASH
+  - versionName: 1.2.3
+    versionCode: 6
+    commit: e750048b2894965b78e7d9e89e6514f9c29d97b5
     subdir: app
     gradle:
       - yes
 
-AllowedAPKSigningKeys: REPLACE_WITH_SIGNING_CERT_SHA256
+AllowedAPKSigningKeys: 562dc04416c54a34e27c53df7f1810368dbab9a994367fc018b47c95b33cd903
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 1.2.2
-CurrentVersionCode: 5
+CurrentVersion: 1.2.3
+CurrentVersionCode: 6
