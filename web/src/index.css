@@ -136,6 +136,55 @@ h1, h2, legend {
   color: var(--label);
 }
 
+/* Collapsible settings card */
+
+.settings-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  padding: 1rem 1.25rem;
+}
+
+.settings-toggle:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: -2px;
+}
+
+.settings-toggle__summary {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-toggle__chevron {
+  flex-shrink: 0;
+  color: var(--label);
+  font-size: 0.75rem;
+}
+
+.settings-body {
+  padding: 0 1.25rem 1.5rem;
+}
+
+.settings-body fieldset {
+  margin-top: 0;
+}
+
 /* Toggle row (Shuffle/Loop) */
 
 .toggle-row {
@@ -171,6 +220,15 @@ h1, h2, legend {
 
 .toggle input {
   accent-color: var(--pink);
+}
+
+.toggle--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.toggle--disabled input {
+  cursor: not-allowed;
 }
 
 /* Mode picker */
@@ -400,6 +458,24 @@ fieldset {
   font-variant-numeric: tabular-nums;
 }
 
+.now-playing__next {
+  margin: 0.6rem 0 0;
+  font-weight: 700;
+  font-size: 1.15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.now-playing__next-label {
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--label);
+  margin-right: 0.4rem;
+}
+
 /* Signature element: the Stop/Freeze state badge */
 
 .state-badge {
@@ -482,4 +558,47 @@ fieldset {
   margin: 0.75rem 0 0;
   text-align: center;
   color: var(--text-dim);
+}
+
+.now-playing > .btn--ghost {
+  margin-top: 0.75rem;
+}
+
+/* End Session confirm dialog */
+
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(13, 2, 33, 0.72);
+  backdrop-filter: blur(2px);
+  z-index: 10;
+}
+
+.dialog {
+  width: 100%;
+  max-width: 24rem;
+  background: var(--bg-top);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.dialog__message {
+  margin: 0 0 1.25rem;
+  text-align: center;
+}
+
+.dialog__actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.dialog__actions .btn {
+  flex: 1;
+  margin-top: 0;
 }

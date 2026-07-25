@@ -39,6 +39,8 @@ export interface PlaylistPlayer {
   seekBack: () => void
   seekForward: () => void
   setStopInterval: (stopInterval: StopInterval) => void
+  setLoop: (loop: boolean) => void
+  end: () => void
 }
 
 function scheduleDeadlineTimer(
@@ -133,6 +135,19 @@ export function usePlaylistPlayer(): PlaylistPlayer {
     syncAudioToCurrentTrack()
   }
 
+  /** Tears the Session down entirely, reverting the hook to its pre-`start()` state so the caller
+   * can show the picker again. */
+  function end() {
+    orchestratorRef.current?.close()
+    engineRef.current = null
+    orchestratorRef.current = null
+    setSessionState(null)
+    setPauseRemainingMillis(null)
+    setCurrentMillis(0)
+    setTotalMillis(0)
+    forceRender((n) => n + 1)
+  }
+
   function skipToNext() {
     const engine = engineRef.current
     if (!engine || !engine.canSkipNext) return
@@ -195,5 +210,7 @@ export function usePlaylistPlayer(): PlaylistPlayer {
     seekBack: () => seekBy(-SEEK_STEP_MILLIS),
     seekForward: () => seekBy(SEEK_STEP_MILLIS),
     setStopInterval: (stopInterval) => orchestratorRef.current?.setStopInterval(stopInterval),
+    setLoop: (loop) => orchestratorRef.current?.setLoop(loop),
+    end,
   }
 }

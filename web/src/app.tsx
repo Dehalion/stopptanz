@@ -24,6 +24,11 @@ const STATE_LABEL: Record<SessionState['kind'], string> = {
   closed: 'Closed',
 }
 
+const MODE_LABEL: Record<Mode, string> = {
+  FREEZE_DANCE: 'Freeze Dance',
+  MUSICAL_CHAIRS: 'Musical Chairs',
+}
+
 export function App() {
   const player = usePlaylistPlayer()
   const initialSettings = loadSessionSettings()
@@ -34,6 +39,11 @@ export function App() {
   const [stopMaxSeconds, setStopMaxSeconds] = useState(initialSettings.stopIntervalMaxSeconds)
   const [pauseDurationSeconds, setPauseDurationSeconds] = useState(4)
   const [reviewTracks, setReviewTracks] = useState<Track[] | null>(null)
+  const [settingsExpanded, setSettingsExpanded] = useState(false)
+  const [showEndConfirm, setShowEndConfirm] = useState(false)
+
+  const state = player.sessionState
+  const sessionActive = state !== null
 
   function onFilesSelected(e: Event) {
     const files = Array.from((e.target as HTMLInputElement).files ?? [])
@@ -57,6 +67,7 @@ export function App() {
   function onLoopChange(value: boolean) {
     setLoop(value)
     saveLoop(value)
+    if (sessionActive) player.setLoop(value)
   }
 
   const stopIntervalValid = stopMinSeconds >= 0 && stopMaxSeconds >= stopMinSeconds
@@ -73,11 +84,11 @@ export function App() {
     applyStopIntervalIfValid(stopMinSeconds, value)
   }
 
-  /** Stop Interval changes apply to the running Session immediately, matching Android; other
-   * settings (Mode, Shuffle, Loop) only take effect on the next Session since they're baked into
-   * the SessionEngine/Playlist at start(). */
+  /** Stop Interval changes apply to the running Session immediately, matching Android; Mode and
+   * Shuffle only take effect on the next Session since they're baked into the SessionEngine/Playlist
+   * at start() — unlike Loop, which is read live and so can also apply immediately. */
   function applyStopIntervalIfValid(minSeconds: number, maxSeconds: number) {
-    if (minSeconds >= 0 && maxSeconds >= minSeconds && player.sessionState) {
+    if (minSeconds >= 0 && maxSeconds >= minSeconds && sessionActive) {
       player.setStopInterval(createStopInterval(minSeconds * 1000, maxSeconds * 1000))
     }
   }
@@ -92,25 +103,125 @@ export function App() {
     })
   }
 
+  function requestEndSession() {
+    if (state?.kind === 'playing') {
+      setShowEndConfirm(true)
+    } else {
+      endSession()
+    }
+  }
+
+  function endSession() {
+    player.end()
+    setReviewTracks(null)
+    setShowEndConfirm(false)
+  }
+
+  const settingsSummary =
+    mode === 'FREEZE_DANCE'
+      ? `${MODE_LABEL[mode]} · Pause ${pauseDurationSeconds}s · Stop ${stopMinSeconds}–${stopMaxSeconds}s`
+      : `${MODE_LABEL[mode]} · Stop ${stopMinSeconds}–${stopMaxSeconds}s`
+
   const position = { currentMillis: player.currentMillis, totalMillis: player.totalMillis }
-  const state = player.sessionState
 
   return (
     <main>
       <h1 class="app__title">Stopptanz</h1>
 
-      <label class="picker">
-        <span class="picker__icon" aria-hidden="true">🎵</span>
-        <span class="picker__label">{reviewTracks ? 'Choose different music' : 'Choose your music'}</span>
-        <p class="picker__hint">Select one or more audio files from your device</p>
-        <input type="file" accept="audio/*" multiple onChange={onFilesSelected} />
-      </label>
+      {!sessionActive && (
+        <label class="picker">
+          <span class="picker__icon" aria-hidden="true">🎵</span>
+          <span class="picker__label">{reviewTracks ? 'Choose different music' : 'Choose your music'}</span>
+          <p class="picker__hint">Select one or more audio files from your device</p>
+          <input type="file" accept="audio/*" multiple onChange={onFilesSelected} />
+        </label>
+      )}
+
+      <section class="section settings-card">
+        <button
+          type="button"
+          class="settings-toggle"
+          aria-expanded={settingsExpanded}
+          onClick={() => setSettingsExpanded((v) => !v)}
+        >
+          <span class="settings-toggle__summary">{settingsSummary}</span>
+          <span class="settings-toggle__chevron" aria-hidden="true">
+            {settingsExpanded ? '▲' : '▼'}
+          </span>
+        </button>
+
+        {settingsExpanded && (
+          <div class="settings-body">
+            {!sessionActive && (
+              <fieldset>
+                <legend class="section__title">Mode</legend>
+                <div class="mode-row">
+                  <label class="mode">
+                    <input
+                      type="radio"
+                      name="mode"
+                      checked={mode === 'FREEZE_DANCE'}
+                      onChange={() => onModeChange('FREEZE_DANCE')}
+                    />
+                    <span class="mode__name">Freeze Dance</span>
+                    <span class="mode__hint">Auto-resumes after a pause</span>
+                  </label>
+                  <label class="mode">
+                    <input
+                      type="radio"
+                      name="mode"
+                      checked={mode === 'MUSICAL_CHAIRS'}
+                      onChange={() => onModeChange('MUSICAL_CHAIRS')}
+                    />
+                    <span class="mode__name">Musical Chairs</span>
+                    <span class="mode__hint">Stays stopped until you resume</span>
+                  </label>
+                </div>
+              </fieldset>
+            )}
+
+            <div class="field-row">
+              <label class="field">
+                Stop interval min (s)
+                <input
+                  type="number"
+                  min={0}
+                  value={stopMinSeconds}
+                  onInput={(e) => onStopMinChange(Number((e.target as HTMLInputElement).value))}
+                />
+              </label>
+              <label class="field">
+                Stop interval max (s)
+                <input
+                  type="number"
+                  min={stopMinSeconds}
+                  value={stopMaxSeconds}
+                  onInput={(e) => onStopMaxChange(Number((e.target as HTMLInputElement).value))}
+                />
+              </label>
+              {mode === 'FREEZE_DANCE' && (
+                <label class="field">
+                  Freeze pause (s)
+                  <input
+                    type="number"
+                    min={0}
+                    value={pauseDurationSeconds}
+                    onInput={(e) => setPauseDurationSeconds(Number((e.target as HTMLInputElement).value))}
+                  />
+                </label>
+              )}
+            </div>
+            {!stopIntervalValid && <p class="field-error">Stop interval max must be at least min.</p>}
+          </div>
+        )}
+      </section>
 
       <div class="toggle-row">
-        <label class="toggle">
+        <label class={`toggle${sessionActive ? ' toggle--disabled' : ''}`}>
           <input
             type="checkbox"
             checked={shuffle}
+            disabled={sessionActive}
             onChange={(e) => onShuffleChange((e.target as HTMLInputElement).checked)}
           />
           Shuffle
@@ -121,61 +232,7 @@ export function App() {
         </label>
       </div>
 
-      <fieldset>
-        <legend class="section__title">Mode</legend>
-        <div class="mode-row">
-          <label class="mode">
-            <input type="radio" name="mode" checked={mode === 'FREEZE_DANCE'} onChange={() => onModeChange('FREEZE_DANCE')} />
-            <span class="mode__name">Freeze Dance</span>
-            <span class="mode__hint">Auto-resumes after a pause</span>
-          </label>
-          <label class="mode">
-            <input
-              type="radio"
-              name="mode"
-              checked={mode === 'MUSICAL_CHAIRS'}
-              onChange={() => onModeChange('MUSICAL_CHAIRS')}
-            />
-            <span class="mode__name">Musical Chairs</span>
-            <span class="mode__hint">Stays stopped until you resume</span>
-          </label>
-        </div>
-      </fieldset>
-
-      <div class="field-row">
-        <label class="field">
-          Stop interval min (s)
-          <input
-            type="number"
-            min={0}
-            value={stopMinSeconds}
-            onInput={(e) => onStopMinChange(Number((e.target as HTMLInputElement).value))}
-          />
-        </label>
-        <label class="field">
-          Stop interval max (s)
-          <input
-            type="number"
-            min={stopMinSeconds}
-            value={stopMaxSeconds}
-            onInput={(e) => onStopMaxChange(Number((e.target as HTMLInputElement).value))}
-          />
-        </label>
-        {mode === 'FREEZE_DANCE' && (
-          <label class="field">
-            Freeze pause (s)
-            <input
-              type="number"
-              min={0}
-              value={pauseDurationSeconds}
-              onInput={(e) => setPauseDurationSeconds(Number((e.target as HTMLInputElement).value))}
-            />
-          </label>
-        )}
-      </div>
-      {!stopIntervalValid && <p class="field-error">Stop interval max must be at least min.</p>}
-
-      {reviewTracks && (
+      {reviewTracks && !sessionActive && (
         <section class="section">
           <h2 class="section__title">Playlist</h2>
           <ol class="playlist">
@@ -223,11 +280,13 @@ export function App() {
           <p class="now-playing__time">
             {formatCurrent(position)} / {formatTotal(position)}
           </p>
+          {player.nextTrack && (
+            <p class="now-playing__next">
+              <span class="now-playing__next-label">Next</span> {player.nextTrack.name}
+            </p>
+          )}
 
           <span class={`state-badge state-badge--${state.kind}`}>{STATE_LABEL[state.kind]}</span>
-          {player.pauseRemainingMillis !== null && (
-            <p class="resume-countdown">Resuming in {Math.ceil(player.pauseRemainingMillis / 1000)}s</p>
-          )}
           {state.kind === 'finished' && <p class="finished-note">Playlist finished — nice moves.</p>}
 
           <div class="transport">
@@ -253,7 +312,9 @@ export function App() {
             )}
             {state.kind === 'stopped' && (
               <button type="button" class="btn btn--block" onClick={player.resume}>
-                Resume
+                {player.pauseRemainingMillis !== null
+                  ? `Resume (${Math.ceil(player.pauseRemainingMillis / 1000)}s)`
+                  : 'Resume'}
               </button>
             )}
             {(state.kind === 'playing' || state.kind === 'stopped') && (
@@ -267,7 +328,27 @@ export function App() {
               </button>
             )}
           </div>
+
+          <button type="button" class="btn btn--block btn--ghost" onClick={requestEndSession}>
+            End Session
+          </button>
         </section>
+      )}
+
+      {showEndConfirm && (
+        <div class="dialog-overlay" role="presentation">
+          <div class="dialog" role="alertdialog" aria-modal="true" aria-label="End session">
+            <p class="dialog__message">Music is still playing. End the session anyway?</p>
+            <div class="dialog__actions">
+              <button type="button" class="btn btn--ghost" onClick={() => setShowEndConfirm(false)}>
+                Cancel
+              </button>
+              <button type="button" class="btn" onClick={endSession}>
+                End Session
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   )

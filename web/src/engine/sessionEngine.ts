@@ -128,6 +128,12 @@ export class SessionEngine {
     this._pauseDurationMillis = pauseDurationMillis
   }
 
+  /** Unlike `shuffle` (baked into `orderedTracks` at construction), `loop` is read live on every
+   * advance check, so it can be toggled mid-Session. */
+  setLoop(loop: boolean): void {
+    this.playlist.loop = loop
+  }
+
   /** Called by the playback adapter when the Playlist reaches its end. */
   onPlaylistEnded(): void {
     if (this._state.kind !== 'playing') throw new Error(`Cannot end Playlist from ${this._state.kind}`)

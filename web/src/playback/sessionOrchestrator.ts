@@ -137,6 +137,10 @@ export class SessionOrchestrator {
     this.engine.setPauseDurationMillis(pauseDurationMillis)
   }
 
+  setLoop(loop: boolean): void {
+    this.engine.setLoop(loop)
+  }
+
   close(): void {
     this.autoStopHandle?.cancel()
     this.autoResumeHandle?.cancel()

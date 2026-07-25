@@ -117,6 +117,14 @@ describe('SessionEngine', () => {
     expect(e.pauseDurationMillis).toBe(9_000)
   })
 
+  it('setLoop takes effect immediately, since it is read live rather than baked in at construction', () => {
+    const playlist: Playlist = { tracks: [track('a'), track('b')], loop: false }
+    const e = engine({ mode: 'FREEZE_DANCE', playlist })
+    expect(e.canSkipPrevious).toBe(false)
+    e.setLoop(true)
+    expect(e.canSkipPrevious).toBe(true)
+  })
+
   it('orderedTracks preserves playlist order when shuffle is off', () => {
     const playlist: Playlist = { tracks: [track('a'), track('b'), track('c')], shuffle: false }
     const e = engine({ mode: 'FREEZE_DANCE', playlist })
