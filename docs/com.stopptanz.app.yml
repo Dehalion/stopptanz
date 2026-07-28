@@ -1,6 +1,10 @@
 Categories:
   - Local Media Player
+
+AuthorName: Dehalion
+AuthorEmail: info@stopptanz.com
 License: GPL-3.0-or-later
+WebSite: https://stopptanz.com/
 SourceCode: https://github.com/Dehalion/stopptanz
 IssueTracker: https://github.com/Dehalion/stopptanz/issues
 Changelog: https://github.com/Dehalion/stopptanz/releases
