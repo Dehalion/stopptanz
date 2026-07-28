@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Dehalion
+// SPDX-License-Identifier: GPL-3.0-only
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 /**

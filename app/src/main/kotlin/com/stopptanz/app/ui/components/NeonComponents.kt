@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Dehalion
+// SPDX-License-Identifier: GPL-3.0-only
 package com.stopptanz.app.ui.components
 
 import androidx.compose.foundation.background

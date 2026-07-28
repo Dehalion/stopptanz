@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Dehalion
+// SPDX-License-Identifier: GPL-3.0-only
 package com.stopptanz.app.session
 
 /** Live playback position for the current Track, polled from the player. */

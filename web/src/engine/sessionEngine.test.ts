@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Dehalion
+// SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
 import { SessionEngine } from './sessionEngine'
 import type { Playlist } from './playlist'

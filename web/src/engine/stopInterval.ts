@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Dehalion
+// SPDX-License-Identifier: GPL-3.0-only
 export interface StopInterval {
   minMillis: number
   maxMillis: number

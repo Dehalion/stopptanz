@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Dehalion
+// SPDX-License-Identifier: GPL-3.0-only
 import type { Track } from '../engine/track'
 
 /** Pure in-memory reorder/remove edits for the Playlist review screen — never persisted to disk. */

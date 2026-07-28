@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Dehalion
+// SPDX-License-Identifier: GPL-3.0-only
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { awaitDeadline } from '../engine/deadlineTicker'
 import { SessionEngine } from '../engine/sessionEngine'

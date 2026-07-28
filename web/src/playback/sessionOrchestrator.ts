@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Dehalion
+// SPDX-License-Identifier: GPL-3.0-only
 import type { SessionEngine } from '../engine/sessionEngine'
 import type { SessionState } from '../engine/sessionState'
 import type { StopInterval } from '../engine/stopInterval'

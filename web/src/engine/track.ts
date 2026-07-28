@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Dehalion
+// SPDX-License-Identifier: GPL-3.0-only
 /** A single audio file within a Playlist. `name` is the display name shown to the host.
  *  `missing` marks a Playlist File entry that didn't resolve to a file; excluded from playback. */
 export interface Track {

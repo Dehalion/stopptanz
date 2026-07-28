@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Dehalion
+// SPDX-License-Identifier: GPL-3.0-only
 import { describe, expect, it } from 'vitest'
 import { moveDown, moveUp, remove } from './trackReview'
 import type { Track } from '../engine/track'

@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Dehalion
+// SPDX-License-Identifier: GPL-3.0-only
 package com.stopptanz.engine
 
 /** A single audio file within a Playlist. [name] is the display name shown to the host.

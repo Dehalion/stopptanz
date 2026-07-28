@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Dehalion
+// SPDX-License-Identifier: GPL-3.0-only
 import type { Playlist } from '../engine/playlist'
 
 const audioExtensions = new Set(['mp3', 'm4a', 'flac', 'wav', 'ogg', 'oga', 'aac', 'opus'])

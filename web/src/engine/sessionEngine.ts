@@ -1,3 +1,5 @@
+// Copyright (C) 2026 Dehalion
+// SPDX-License-Identifier: GPL-3.0-only
 import type { Mode } from './mode'
 import type { Playlist } from './playlist'
 import { defaultRandomSource, type RandomSource } from './randomSource'
