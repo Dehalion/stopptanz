@@ -1,5 +1,5 @@
 Categories:
-  - Multimedia
+  - Local Media Player
 License: GPL-3.0-or-later
 SourceCode: https://github.com/Dehalion/stopptanz
 IssueTracker: https://github.com/Dehalion/stopptanz/issues
@@ -9,8 +9,8 @@ AutoName: Stopptanz
 
 RepoType: git
 Repo: https://github.com/Dehalion/stopptanz.git
-
-Binaries: https://github.com/Dehalion/stopptanz/releases/download/v%v/stopptanz-v%v-build%c.apk
+Binaries: 
+  https://github.com/Dehalion/stopptanz/releases/download/v%v/stopptanz-v%v-build%c.apk
 
 Builds:
   - versionName: 1.2.3
